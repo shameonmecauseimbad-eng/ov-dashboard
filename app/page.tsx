@@ -1,100 +1,95 @@
-import Image from "next/image";
+import { Suspense } from "react";
+import AutoRefresh from "@/components/AutoRefresh";
+import SupabaseStatus from "@/components/SupabaseStatus";
+import WidgetBoundary from "@/components/WidgetBoundary";
+import WidgetSkeleton from "@/components/WidgetSkeleton";
+import YinYang from "@/components/YinYang";
+import DddOverview from "@/components/widgets/DddOverview";
+import GithubActivity from "@/components/widgets/GithubActivity";
+import KalenderErinnerungen from "@/components/widgets/KalenderErinnerungen";
+import KryptoKurse from "@/components/widgets/KryptoKurse";
+import MorgenBriefing from "@/components/widgets/MorgenBriefing";
+import RedzoneEarthAds from "@/components/widgets/RedzoneEarthAds";
+import SocialMedia from "@/components/widgets/SocialMedia";
+
+// Supabase-Daten alle 60 Sekunden neu laden (GitHub cached 5 Min. auf Fetch-Ebene)
+export const revalidate = 60;
+
+/** Boundary + Suspense pro Widget: crasht eins, bleibt der Rest der Seite intakt. */
+function Widget({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <WidgetBoundary title={title}>
+      <Suspense fallback={<WidgetSkeleton title={title} />}>{children}</Suspense>
+    </WidgetBoundary>
+  );
+}
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const today = new Intl.DateTimeFormat("de-AT", {
+    dateStyle: "full",
+    timeZone: "Europe/Vienna",
+  }).format(new Date());
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  return (
+    <div className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-5 sm:px-8">
+      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-background/85 py-3.5 backdrop-blur sm:py-6">
+        <div className="flex items-center gap-3 sm:gap-3.5">
+          <YinYang className="h-7 w-7 sm:h-8 sm:w-8" />
+          <div>
+            <h1 className="font-display text-hero font-semibold tracking-tight">
+              Overview
+            </h1>
+            <p className="text-[11px] text-muted sm:text-xs">Alle Projekte, ein Blick</p>
+          </div>
         </div>
+        <div className="flex items-center gap-3 sm:gap-4">
+          <AutoRefresh />
+          <Suspense
+            fallback={
+              <span className="flex items-center gap-1.5 text-xs text-muted">
+                <span className="h-2 w-2 rounded-full bg-white/20" aria-hidden="true" />
+                Supabase
+              </span>
+            }
+          >
+            <SupabaseStatus />
+          </Suspense>
+          <p className="hidden text-sm text-muted lg:block">{today}</p>
+        </div>
+      </header>
+
+      <main className="grid flex-1 content-start gap-4 py-8 sm:grid-cols-2 sm:gap-5 sm:py-10">
+        {/* Tagesüberblick zuerst — Reihenfolge = DOM-Reihenfolge,
+            gilt auch für die einspaltige Mobile-Ansicht. */}
+        <Widget title="Morgen-Briefing">
+          <MorgenBriefing />
+        </Widget>
+        <Widget title="Kalender & Erinnerungen">
+          <KalenderErinnerungen />
+        </Widget>
+        <Widget title="DDD Übersicht">
+          <DddOverview />
+        </Widget>
+        <Widget title="GitHub Activity">
+          <GithubActivity />
+        </Widget>
+        <Widget title="Social Media">
+          <SocialMedia />
+        </Widget>
+        <Widget title="Krypto-Kurse">
+          <KryptoKurse />
+        </Widget>
+        <Widget title="RedzoneEarth Ads">
+          <RedzoneEarthAds />
+        </Widget>
+        {/* Neue Widgets: Komponente unter components/widgets/ anlegen und
+            hier in <Widget title="…"> einhängen — Karte, Fehlerisolierung
+            und Yin-Yang-Loader kommen automatisch mit. */}
       </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
+
+      <footer className="flex items-center gap-2.5 border-t border-line py-5 text-xs text-muted">
+        <YinYang size={14} />
+        <span>ov-dashboard · lokal &amp; privat · read-only</span>
       </footer>
     </div>
   );

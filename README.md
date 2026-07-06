@@ -1,36 +1,189 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ov-dashboard
 
-## Getting Started
+Privates Übersichts-Dashboard (Next.js 14, App Router, TypeScript, Tailwind).
+Dark Mode als einzige Option, ein Widget pro Datenquelle, Frontend strikt **read-only**.
 
-First, run the development server:
+| Widget | Datenquelle | Status |
+|---|---|---|
+| Morgen-Briefing | Supabase-Tabelle `morning_briefing` | live, sobald Tabelle existiert |
+| Kalender & Erinnerungen | Google Calendar + Tasks API (read-only) | live, sobald Google-Env-Vars gesetzt |
+| DDD Übersicht | Supabase-Tabelle `ddd_stats` | live, sobald Tabelle existiert |
+| GitHub Activity | GitHub REST API (`GITHUB_REPO`) | live, sobald Repo erreichbar |
+| Social Media | Supabase-Tabelle `social_stats` | live, sobald Tabelle existiert |
+| Krypto-Kurse | CoinGecko public API (kein Key) | live, 60-s-Refresh im Browser |
+| RedzoneEarth Ads | Ad-Provider-API | Platzhalter („Noch nicht live“) |
+
+## Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local   # und Werte eintragen
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Env-Variablen (`.env.local`)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Variable | Zweck | Auf Vercel? |
+|---|---|---|
+| `SUPABASE_URL` | Supabase-Projekt-URL | ja |
+| `SUPABASE_ANON_KEY` | Lesezugriff (RLS), Legacy-Format `eyJ...` | ja |
+| `GITHUB_REPO` | Repo fürs GitHub-Widget, Format `owner/repo` | ja |
+| `GITHUB_TOKEN` | optional: private Repos / höheres Rate-Limit | ja (empfohlen) |
+| `GOOGLE_CLIENT_ID` | OAuth2-Client fürs Kalender-Widget | nur wenn gewollt¹ |
+| `GOOGLE_CLIENT_SECRET` | OAuth2-Client-Secret (GCP-Console) | nur wenn gewollt¹ |
+| `GOOGLE_REFRESH_TOKEN` | Refresh-Token (Scopes: calendar.readonly, tasks.readonly) | nur wenn gewollt¹ |
+| `SUPABASE_SERVICE_ROLE_KEY` | **nur** für die `scripts/sync-*.js` (Hermes) | **NEIN — niemals!** |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+¹ Google-Zugangsdaten auf Vercel bedeuten: private Termine und Tasks sind ohne
+Auth-Layer über die Deploy-URL einsehbar. Ohne diese Vars zeigt das Widget
+einfach einen Hinweis — bewusste Entscheidung.
 
-## Learn More
+**Google-Refresh-Token erzeugen (einmalig):** In der GCP-Console ein Projekt
+mit aktivierter **Calendar API** und **Tasks API** anlegen und einen
+OAuth-Client (Typ „Desktop-App“) erstellen. Client-ID und Secret in
+`.env.local` eintragen, dann:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+node scripts/get-google-refresh-token.js
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Das Script gibt einen Auth-Link aus, fängt die Google-Rückleitung lokal ab
+(Port 53682) und druckt den fertigen `GOOGLE_REFRESH_TOKEN` für `.env.local`
+in die Konsole. Scopes: `calendar.readonly` + `tasks.readonly` (read-only).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Alle Variablen sind bewusst ohne `NEXT_PUBLIC_`-Präfix: sie bleiben serverseitig
+und landen nie im Browser-Bundle. `.env.local` ist git-ignoriert.
 
-## Deploy on Vercel
+### Supabase-Migration: Schema „dashboard“
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Alle Dashboard-Tabellen leben im eigenen Schema `dashboard` — sauber getrennt
+von den DrawdownDiary-Tabellen in `public`, bei gleicher `SUPABASE_URL` und
+gleichem Anon-Key. Einmalig im Supabase-SQL-Editor ausführen:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```sql
+-- 1) Schema anlegen
+create schema if not exists dashboard;
+grant usage on schema dashboard to anon, authenticated, service_role;
+
+-- 2) Früher in public angelegte Tabellen verschieben (falls vorhanden)
+do $$
+declare t text;
+begin
+  foreach t in array array['ddd_stats', 'social_stats', 'morning_briefing'] loop
+    if exists (select from pg_tables where schemaname = 'public' and tablename = t) then
+      execute format('alter table public.%I set schema dashboard', t);
+    end if;
+  end loop;
+end $$;
+
+-- 3) Tabellen anlegen, falls es sie noch nicht gibt
+create table if not exists dashboard.ddd_stats (
+  id bigint generated always as identity primary key,
+  user_count int not null default 0,
+  trade_count int not null default 0,
+  umsatz numeric not null default 0,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists dashboard.social_stats (
+  platform text primary key,
+  followers int not null default 0,
+  views_24h int not null default 0,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists dashboard.morning_briefing (
+  id bigint generated always as identity primary key,
+  datum date not null default ((now() at time zone 'Europe/Vienna')::date),
+  thema text not null,
+  inhalt text not null,
+  erstellt_am timestamptz not null default now()
+);
+
+-- 4) RLS + Lese-Policies (idempotent)
+alter table dashboard.ddd_stats enable row level security;
+alter table dashboard.social_stats enable row level security;
+alter table dashboard.morning_briefing enable row level security;
+
+drop policy if exists "anon liest ddd_stats" on dashboard.ddd_stats;
+create policy "anon liest ddd_stats" on dashboard.ddd_stats
+  for select to anon, authenticated using (true);
+
+drop policy if exists "anon liest social_stats" on dashboard.social_stats;
+create policy "anon liest social_stats" on dashboard.social_stats
+  for select to anon, authenticated using (true);
+
+drop policy if exists "anon liest morning_briefing" on dashboard.morning_briefing;
+create policy "anon liest morning_briefing" on dashboard.morning_briefing
+  for select to anon, authenticated using (true);
+
+-- 5) Rechte: anders als in public gibt es im Custom-Schema KEINE automatischen Grants
+grant select on all tables in schema dashboard to anon, authenticated;
+grant all on all tables in schema dashboard to service_role;
+grant usage, select on all sequences in schema dashboard to service_role;
+alter default privileges in schema dashboard grant select on tables to anon, authenticated;
+alter default privileges in schema dashboard grant all on tables to service_role;
+
+-- 6) Platzhalter-Daten (nur wenn leer)
+insert into dashboard.ddd_stats (user_count, trade_count, umsatz)
+select 128, 3421, 1842.50
+where not exists (select from dashboard.ddd_stats);
+
+insert into dashboard.social_stats (platform, followers, views_24h) values
+  ('x', 1240, 5600),
+  ('youtube', 380, 2100),
+  ('instagram', 210, 940)
+on conflict (platform) do nothing;
+
+insert into dashboard.morning_briefing (thema, inhalt)
+select v.thema, v.inhalt
+from (values
+  ('Märkte', 'Platzhalter — erster Briefing-Eintrag, kommt täglich vom Hermes Agent.'),
+  ('US-Politik', 'Platzhalter — erster Briefing-Eintrag, kommt täglich vom Hermes Agent.'),
+  ('Iran', 'Platzhalter — erster Briefing-Eintrag, kommt täglich vom Hermes Agent.')
+) as v(thema, inhalt)
+where not exists (select from dashboard.morning_briefing);
+```
+
+**Danach zwingend:** In Supabase Studio unter **Project Settings → Data API →
+Exposed schemas** das Schema `dashboard` ergänzen — sonst antwortet die API mit
+`PGRST106` und die Supabase-Widgets bleiben offline (der Hinweis dazu erscheint
+direkt im Widget).
+
+Es gibt **keine** Insert-/Update-Policies für `anon` — Schreiben ist per RLS blockiert.
+
+## Neues Widget hinzufügen
+
+1. Komponente unter `components/widgets/MeinWidget.tsx` anlegen
+   (Hülle: `WidgetCard`, Kennzahlen: `StatTile`, Fehlerfälle: `ErrorNote`).
+2. In `app/page.tsx` importieren und im `<main>`-Grid einhängen. Fertig.
+
+## Hermes-Scripts (schreiben nach Supabase, laufen lokal per Cron)
+
+```bash
+node scripts/sync-social-stats.js
+node scripts/sync-morning-briefing.js --thema "Märkte" --inhalt "Text…" [--datum YYYY-MM-DD]
+```
+
+- **sync-social-stats.js:** Upsert (`platform` = Unique-Key) nach `social_stats`.
+  Plattform-Liste: `scripts/social-platforms.config.js`. Hermes importiert
+  `syncSocialStats([...])` und übergibt echte Zahlen.
+- **sync-morning-briefing.js:** Insert nach `morning_briefing` — Eintrag per
+  CLI-Argumente oder als Import `insertBriefing({ thema, inhalt, datum? })`.
+
+Beide loggen Fehler laut und beenden mit Exit-Code 1 (kein stiller Fail).
+Scraping-/Recherche-Logik gehört nicht in dieses Repo.
+
+## Deploy auf Vercel
+
+1. Repo zu GitHub pushen, in Vercel importieren (Framework-Preset: Next.js).
+2. Env-Vars laut Tabelle oben setzen — den `SUPABASE_SERVICE_ROLE_KEY`
+   **nicht** hochladen, der Sync läuft lokal beim Hermes Agent.
+3. `GITHUB_TOKEN` auf Vercel setzen (fine-grained, read-only): ohne Token teilt
+   sich die Vercel-Infrastruktur das anonyme GitHub-Rate-Limit (60 Anfragen/Std./IP).
+
+**Achtung, kein Auth-Layer:** Jeder, der die Deploy-URL kennt, sieht die
+Kennzahlen (DDD-Umsatz!). „Unlisted“ ist kein Schutz — URLs leaken über Referrer,
+Browser-History und Vercel-Preview-Kommentare. Empfehlung: in den
+Vercel-Projekt-Einstellungen **Deployment Protection → Vercel Authentication**
+aktivieren (kostenlos, kein eigener Auth-Code nötig).
