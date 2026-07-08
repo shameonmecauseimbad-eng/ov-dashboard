@@ -72,7 +72,12 @@ async function loadGithub(): Promise<GithubData> {
       return { status: "error", hint: hintFor(commitsRes.status, repo, Boolean(token)) };
     }
 
-    const rawCommits = (await commitsRes.json()) as any[];
+    type RawCommit = {
+      sha?: string;
+      commit?: { message?: string; author?: { name?: string; date?: string } };
+      author?: { login?: string };
+    };
+    const rawCommits = (await commitsRes.json()) as RawCommit[];
     const commits: Commit[] = rawCommits.map((c) => ({
       sha: String(c.sha ?? "").slice(0, 7),
       message: String(c.commit?.message ?? "").split("\n")[0],
@@ -83,7 +88,13 @@ async function loadGithub(): Promise<GithubData> {
     // Der Issues-Endpoint liefert auch Pull Requests mit — die fliegen raus.
     let issues: Issue[] = [];
     if (issuesRes.ok) {
-      const rawIssues = (await issuesRes.json()) as any[];
+      type RawIssue = {
+        number?: number;
+        title?: string;
+        created_at?: string;
+        pull_request?: unknown;
+      };
+      const rawIssues = (await issuesRes.json()) as RawIssue[];
       issues = rawIssues
         .filter((i) => !i.pull_request)
         .slice(0, 5)
@@ -123,7 +134,9 @@ export default async function GithubActivity() {
               <li key={commit.sha} className="flex items-start gap-3">
                 <span
                   className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
-                    index === 0 ? "bg-accent" : "bg-white/15"
+                    index === 0
+                      ? "bg-accent animate-live-ring motion-reduce:animate-none"
+                      : "bg-white/15"
                   }`}
                 />
                 <div className="min-w-0">

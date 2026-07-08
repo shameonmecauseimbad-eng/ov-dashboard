@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
 import { Space_Grotesk } from "next/font/google";
 import localFont from "next/font/local";
+import AlertOverlay from "@/components/AlertOverlay";
+import BootIntro from "@/components/BootIntro";
+import LightGradient from "@/components/LightGradient";
+import ParticleField from "@/components/ParticleField";
+import Sidebar from "@/components/Sidebar";
+import YinYang from "@/components/YinYang";
 import "./globals.css";
 
 const display = Space_Grotesk({
@@ -32,9 +38,21 @@ export default function RootLayout({
   return (
     <html lang="de">
       <body
-        className={`${display.variable} ${geistSans.variable} ${geistMono.variable} bg-background font-sans text-foreground antialiased`}
+        className={`${display.variable} ${geistSans.variable} ${geistMono.variable} animate-breathe-bg bg-background font-sans text-foreground antialiased motion-reduce:animate-none`}
       >
-        {children}
+        <ParticleField />
+        <LightGradient />
+        <div className="grain-overlay" aria-hidden="true" />
+        <Sidebar />
+        <div className="relative z-10 flex min-h-dvh flex-col lg:pl-60">
+          {children}
+          <footer className="mx-auto flex w-full max-w-[1800px] items-center gap-2.5 border-t border-line px-5 py-5 text-xs text-muted sm:px-8">
+            <YinYang size={14} />
+            <span>ov-dashboard · lokal &amp; privat · read-only</span>
+          </footer>
+        </div>
+        <AlertOverlay />
+        <BootIntro />
       </body>
     </html>
   );

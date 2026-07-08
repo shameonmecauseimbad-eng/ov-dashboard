@@ -1,4 +1,5 @@
 import ErrorNote from "@/components/ErrorNote";
+import NextEventCountdown from "@/components/NextEventCountdown";
 import WidgetCard from "@/components/WidgetCard";
 import { loadGoogle, type GoogleData } from "@/lib/google";
 
@@ -62,6 +63,7 @@ async function load(): Promise<LoadResult> {
 export default async function KalenderErinnerungen() {
   const result = await load();
   const now = Date.now();
+  const todayKey = fmtDay.format(new Date());
 
   return (
     <WidgetCard
@@ -71,6 +73,12 @@ export default async function KalenderErinnerungen() {
     >
       {result.status === "ok" ? (
         <>
+          {result.events[0] && (
+            <NextEventCountdown
+              startIso={result.events[0].start}
+              title={result.events[0].title}
+            />
+          )}
           <p className="mb-3 text-xs uppercase tracking-[0.12em] text-muted">
             Nächste Termine
           </p>
@@ -80,14 +88,27 @@ export default async function KalenderErinnerungen() {
             <ul className="space-y-2.5">
               {result.events.map((event, i) => {
                 const start = new Date(event.start);
+                const isToday = fmtDay.format(start) === todayKey;
                 return (
                   <li key={`${event.start}-${i}`} className="flex items-baseline gap-3 text-sm">
-                    <span className="w-[7.5rem] shrink-0 font-mono text-xs tabular-nums text-muted">
+                    <span
+                      className={`w-[7.5rem] shrink-0 font-mono text-xs tabular-nums ${
+                        isToday ? "text-foreground" : "text-muted"
+                      }`}
+                    >
                       {fmtDay.format(start)}
                       {" · "}
                       {event.allDay ? "ganztägig" : fmtTime.format(start)}
                     </span>
-                    <span className="min-w-0 flex-1 truncate text-foreground">{event.title}</span>
+                    <span className="min-w-0 flex-1 truncate text-foreground">
+                      {isToday && (
+                        <span
+                          className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-accent align-middle animate-pulse-soft motion-reduce:animate-none"
+                          aria-hidden="true"
+                        />
+                      )}
+                      {event.title}
+                    </span>
                   </li>
                 );
               })}

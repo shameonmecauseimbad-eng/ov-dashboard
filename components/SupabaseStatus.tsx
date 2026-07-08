@@ -28,7 +28,7 @@ async function checkSupabase(): Promise<Status> {
   }
 }
 
-/** Grüner/roter Punkt im Header — Status nie nur über Farbe, daher mit Label + Tooltip. */
+/** Heller pulsierender / gedämpfter Punkt im Header — Status nie nur über Helligkeit, daher mit Label + Tooltip. */
 export default async function SupabaseStatus() {
   const { ok, detail } = await checkSupabase();
 
@@ -38,7 +38,11 @@ export default async function SupabaseStatus() {
       title={`Supabase: ${detail}`}
     >
       <span
-        className={`h-2 w-2 rounded-full ${ok ? "bg-accent" : "bg-danger"}`}
+        className={`h-2 w-2 rounded-full ${
+          ok
+            ? "bg-accent animate-pulse-soft motion-reduce:animate-none"
+            : "bg-danger"
+        }`}
         aria-hidden="true"
       />
       Supabase

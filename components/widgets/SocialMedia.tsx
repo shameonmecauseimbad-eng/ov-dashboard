@@ -1,3 +1,4 @@
+import CountUp from "@/components/CountUp";
 import ErrorNote from "@/components/ErrorNote";
 import WidgetCard from "@/components/WidgetCard";
 import { DASHBOARD_SCHEMA, getSupabase, supabaseHint } from "@/lib/supabase";
@@ -12,8 +13,6 @@ type SocialRow = {
 type LoadResult =
   | { status: "live"; rows: SocialRow[] }
   | { status: "error"; hint: string };
-
-const number = new Intl.NumberFormat("de-AT");
 
 async function loadSocialStats(): Promise<LoadResult> {
   const supabase = getSupabase();
@@ -115,7 +114,7 @@ export default async function SocialMedia() {
                 </span>
                 <span className="w-24 text-right">
                   <span className="block font-mono text-sm font-semibold tabular-nums text-foreground">
-                    {number.format(row.followers)}
+                    <CountUp value={row.followers} />
                   </span>
                   <span className="block text-[11px] uppercase tracking-[0.1em] text-muted">
                     Follower
@@ -123,7 +122,7 @@ export default async function SocialMedia() {
                 </span>
                 <span className="w-24 text-right">
                   <span className="block font-mono text-sm font-semibold tabular-nums text-foreground">
-                    {number.format(row.views_24h)}
+                    <CountUp value={row.views_24h} />
                   </span>
                   <span className="block text-[11px] uppercase tracking-[0.1em] text-muted">
                     Views 24h

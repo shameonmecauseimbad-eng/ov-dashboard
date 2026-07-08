@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 const REFRESH_MS = 5 * 60_000;
 
@@ -14,16 +14,28 @@ const REFRESH_MS = 5 * 60_000;
 export default function AutoRefresh() {
   const router = useRouter();
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     // Initialer Datenstand = Zeitpunkt des Seitenaufbaus
     setLastRefresh(new Date());
+    window.dispatchEvent(new CustomEvent("ov:refreshed"));
     const timer = setInterval(() => {
-      router.refresh();
+      // In eine Transition gewickelt: isPending bleibt true, bis alle
+      // Server-Widgets neu geladen sind — echtes Fetch-Signal fürs Logo.
+      startTransition(() => {
+        router.refresh();
+      });
       setLastRefresh(new Date());
+      window.dispatchEvent(new CustomEvent("ov:refreshed"));
     }, REFRESH_MS);
     return () => clearInterval(timer);
   }, [router]);
+
+  // Loading-Zustand global broadcasten (SpinningLogo dreht/pulst darauf).
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent(isPending ? "ov:loading" : "ov:loaded"));
+  }, [isPending]);
 
   return (
     <span

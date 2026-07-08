@@ -1,10 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
+import AlertPulse from "@/components/AlertPulse";
+import CountUp from "@/components/CountUp";
 import ErrorNote from "@/components/ErrorNote";
+import Flash from "@/components/Flash";
+import TrendArrow from "@/components/TrendArrow";
 import WidgetCard from "@/components/WidgetCard";
 import YinYang from "@/components/YinYang";
-import { CRYPTO_WATCHLIST } from "@/lib/crypto-watchlist.config";
+import { CRYPTO_ALERTS, CRYPTO_WATCHLIST } from "@/lib/crypto-watchlist.config";
 
 type Coin = {
   id: string;
@@ -17,49 +21,113 @@ type Coin = {
 
 const REFRESH_MS = 60_000;
 
-// Polaritätsfarben bewusst hell genug für #121214 (grün 8,2:1 / rot ~5,4:1)
-const UP_COLOR = "#22c55e";
-const DOWN_COLOR = "#f87171";
+// Monochrom: Richtung über Helligkeit statt Farbe — Anstieg hell (#e5e5e5),
+// Rückgang gedämpftes Grau (#8f8f94). Das Vorzeichen bleibt der harte Indikator.
+const UP_COLOR = "#e5e5e5";
+const DOWN_COLOR = "#8f8f94";
 
-// Bewusst manuelles "$ "-Präfix: de-AT-Formatierung (Punkt als Tausendertrenner)
-// würde das Dollarzeichen sonst nachstellen ("54.977 $").
-function formatPrice(value: number): string {
-  const formatted = new Intl.NumberFormat("de-AT", {
-    maximumFractionDigits: value >= 1000 ? 0 : 2,
-  }).format(value);
-  return `$ ${formatted}`;
-}
+// Preise rendern über CountUp mit manuellem "$ "-Präfix: de-AT-Formatierung
+// (Punkt als Tausendertrenner) würde das Dollarzeichen sonst nachstellen.
 
-/** Mini-Sparkline der letzten 24h als schlanke SVG-Polyline — keine Chart-Lib nötig. */
+/**
+ * 24h-Sparkline als SVG mit Verlaufsfläche je Kursrichtung und
+ * Hover-Tooltip (Preis + Zeitpunkt) — weiterhin ohne Chart-Lib.
+ */
 function Sparkline({ points, up }: { points: number[]; up: boolean }) {
+  const gradientId = useId();
+  const [hover, setHover] = useState<number | null>(null);
   if (points.length < 2) return null;
 
-  const w = 88;
-  const h = 28;
-  const pad = 2;
+  const w = 120;
+  const h = 36;
+  const pad = 3;
   const min = Math.min(...points);
   const max = Math.max(...points);
   const span = max - min || 1;
+  const color = up ? UP_COLOR : DOWN_COLOR;
 
-  const coords = points
-    .map((p, i) => {
-      const x = pad + (i / (points.length - 1)) * (w - pad * 2);
-      const y = pad + (1 - (p - min) / span) * (h - pad * 2);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
+  const xy = points.map((p, i) => {
+    const x = pad + (i / (points.length - 1)) * (w - pad * 2);
+    const y = pad + (1 - (p - min) / span) * (h - pad * 2);
+    return [x, y] as const;
+  });
+  const line = xy.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  // Pfadlänge für den Draw-on-Load-Effekt (stroke-dashoffset, .anim-draw)
+  const lineLen = xy.reduce(
+    (acc, [x, y], i) =>
+      i === 0 ? 0 : acc + Math.hypot(x - xy[i - 1][0], y - xy[i - 1][1]),
+    0
+  );
+  const area =
+    `M ${xy[0][0].toFixed(1)},${h - 1} ` +
+    xy.map(([x, y]) => `L ${x.toFixed(1)},${y.toFixed(1)}`).join(" ") +
+    ` L ${xy[xy.length - 1][0].toFixed(1)},${h - 1} Z`;
+
+  const hoursAgo = hover === null ? 0 : points.length - 1 - hover;
+  const tooltipPrice =
+    hover === null
+      ? ""
+      : `$ ${new Intl.NumberFormat("de-AT", {
+          maximumFractionDigits: points[hover] >= 1000 ? 0 : 2,
+        }).format(points[hover])}`;
+  const tooltipTime = hoursAgo === 0 ? "jetzt" : `vor ${hoursAgo} Std.`;
+  const tooltipLeft = hover === null ? 0 : Math.max(12, Math.min(88, (xy[hover][0] / w) * 100));
 
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden="true" className="shrink-0">
-      <polyline
-        points={coords}
-        fill="none"
-        stroke={up ? UP_COLOR : DOWN_COLOR}
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <div className="relative shrink-0">
+      {hover !== null && (
+        <div
+          className="pointer-events-none absolute -top-7 z-10 -translate-x-1/2"
+          style={{ left: `${tooltipLeft}%` }}
+          aria-hidden="true"
+        >
+          <div className="animate-scale-in origin-bottom whitespace-nowrap rounded-md border border-line bg-raised px-2 py-0.5 font-mono text-[10px] tabular-nums text-foreground motion-reduce:animate-none">
+            {tooltipPrice} · {tooltipTime}
+          </div>
+        </div>
+      )}
+      <svg
+        width={w}
+        height={h}
+        viewBox={`0 0 ${w} ${h}`}
+        aria-hidden="true"
+        onMouseMove={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const x = ((e.clientX - rect.left) / rect.width) * w;
+          const index = Math.round(((x - pad) / (w - pad * 2)) * (points.length - 1));
+          setHover(Math.max(0, Math.min(points.length - 1, index)));
+        }}
+        onMouseLeave={() => setHover(null)}
+      >
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.28" />
+            <stop offset="100%" stopColor={color} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={area} fill={`url(#${gradientId})`} className="animate-fade-in" />
+        <polyline
+          points={line}
+          fill="none"
+          stroke={color}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="anim-draw"
+          style={{ ["--draw-len" as string]: lineLen } as React.CSSProperties}
+        />
+        {hover !== null && (
+          <circle
+            cx={xy[hover][0]}
+            cy={xy[hover][1]}
+            r="3.5"
+            fill={color}
+            stroke="#121214"
+            strokeWidth="2"
+          />
+        )}
+      </svg>
+    </div>
   );
 }
 
@@ -135,20 +203,35 @@ export default function KryptoKurse() {
                     <p className="truncate text-xs text-muted">{coin.name}</p>
                   </div>
                   <Sparkline points={points} up={up} />
-                  <div className="w-28 text-right">
+                  <AlertPulse
+                    value={coin.current_price}
+                    threshold={CRYPTO_ALERTS[coin.id]}
+                    className="w-28 text-right"
+                  >
                     <p className="font-mono text-sm font-semibold tabular-nums text-foreground">
-                      {formatPrice(coin.current_price)}
+                      <Flash value={coin.current_price}>
+                        <CountUp
+                          value={coin.current_price}
+                          prefix="$ "
+                          maxFractionDigits={coin.current_price >= 1000 ? 0 : 2}
+                        />
+                      </Flash>
                     </p>
                     <p
-                      className={`font-mono text-xs tabular-nums ${
+                      className={`flex items-center justify-end gap-1 font-mono text-xs tabular-nums ${
                         up ? "text-accent" : "text-danger-soft"
                       }`}
                     >
-                      {change === null || change === undefined
-                        ? "–"
-                        : `${up ? "+" : ""}${change.toFixed(2)} %`}
+                      {change === null || change === undefined ? (
+                        "–"
+                      ) : (
+                        <>
+                          <TrendArrow up={up} className="h-2 w-2" />
+                          {`${up ? "+" : ""}${change.toFixed(2)} %`}
+                        </>
+                      )}
                     </p>
-                  </div>
+                  </AlertPulse>
                 </li>
               );
             })}
