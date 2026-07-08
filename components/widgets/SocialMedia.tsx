@@ -45,42 +45,6 @@ async function loadSocialStats(): Promise<LoadResult> {
   }
 }
 
-/** Minimalistische Plattform-Icons; unbekannte Plattformen bekommen ein Letter-Badge. */
-function PlatformIcon({ platform }: { platform: string }) {
-  const key = platform.trim().toLowerCase();
-  const common = "h-4 w-4 text-foreground";
-
-  if (key === "x" || key === "twitter") {
-    return (
-      <svg viewBox="0 0 24 24" className={common} aria-hidden="true">
-        <path d="M5 5 L19 19 M19 5 L5 19" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" fill="none" />
-      </svg>
-    );
-  }
-  if (key === "youtube") {
-    return (
-      <svg viewBox="0 0 24 24" className={common} aria-hidden="true">
-        <rect x="2.5" y="6" width="19" height="12" rx="3.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
-        <path d="M10.5 9.75 L15 12 L10.5 14.25 Z" fill="currentColor" />
-      </svg>
-    );
-  }
-  if (key === "instagram") {
-    return (
-      <svg viewBox="0 0 24 24" className={common} aria-hidden="true">
-        <rect x="4" y="4" width="16" height="16" rx="4.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
-        <circle cx="12" cy="12" r="3.6" fill="none" stroke="currentColor" strokeWidth="1.8" />
-        <circle cx="16.6" cy="7.4" r="1.2" fill="currentColor" />
-      </svg>
-    );
-  }
-  return (
-    <span className="flex h-4 w-4 items-center justify-center rounded bg-white/10 font-mono text-[10px] font-semibold uppercase text-foreground">
-      {key.charAt(0) || "?"}
-    </span>
-  );
-}
-
 function platformLabel(platform: string): string {
   const key = platform.trim().toLowerCase();
   if (key === "x" || key === "twitter") return "X";
@@ -88,6 +52,20 @@ function platformLabel(platform: string): string {
   if (key === "instagram") return "Instagram";
   if (key === "tiktok") return "TikTok";
   return platform.charAt(0).toUpperCase() + platform.slice(1);
+}
+
+/**
+ * Plattform-Badge: erster Buchstabe des Labels in einem kleinen Quadrat.
+ * Bewusst SVG-frei (wie die übrigen Server-Widgets) — server-gerendertes
+ * inline-SVG im Multi-Column-Layout löst in Safari einen Repaint-Bug aus,
+ * bei dem die ganze Karte beim Hover verschwindet.
+ */
+function PlatformBadge({ platform }: { platform: string }) {
+  return (
+    <span className="flex h-4 w-4 items-center justify-center rounded bg-white/10 font-mono text-[10px] font-semibold uppercase text-foreground">
+      {platformLabel(platform).charAt(0) || "?"}
+    </span>
+  );
 }
 
 /**
@@ -108,7 +86,7 @@ export default async function SocialMedia() {
           <ul className="divide-y divide-line">
             {result.rows.map((row) => (
               <li key={row.platform} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                <PlatformIcon platform={row.platform} />
+                <PlatformBadge platform={row.platform} />
                 <span className="min-w-0 flex-1 truncate text-sm text-foreground">
                   {platformLabel(row.platform)}
                 </span>
