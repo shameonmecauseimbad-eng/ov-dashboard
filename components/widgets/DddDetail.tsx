@@ -195,6 +195,14 @@ const loadKennzahlen = unstable_cache(
 
 // ─── Bausteine ───────────────────────────────────────────────────────────────
 
+// Einheitliche Wert-Zeile für alle KPI-Kacheln: min-h entspricht exakt der
+// Zeilenbox von text-stat (Font-clamp × line-height 1.1, siehe
+// tailwind.config.ts) — dadurch ist die Box bei JEDER Viewport-Breite gleich
+// hoch, egal ob der Wert in text-stat oder text-stat-sm gesetzt ist. items-end
+// richtet die Ziffern-Unterkanten aus (Mono-Tabellenziffern haben keine
+// Unterlängen → optisch identische Baseline über alle Kacheln hinweg).
+const VALUE_ROW = "mt-1.5 flex min-h-[calc(clamp(1.5rem,1.1rem+1.5vw,2.25rem)*1.1)] items-end";
+
 export function KpiTile({
   label,
   value,
@@ -215,17 +223,24 @@ export function KpiTile({
   missing?: string;
 }) {
   return (
-    <div className="min-w-0">
+    <div className="min-w-0 flex-1">
       <p className="text-xs uppercase tracking-[0.12em] text-muted">{label}</p>
       {missing || value === undefined ? (
-        <p className="mt-1.5 font-mono text-stat font-semibold text-muted">—</p>
+        <p className={`${VALUE_ROW} font-mono text-stat font-semibold text-muted`}>—</p>
       ) : currency ? (
-        <p className="mt-1.5 flex items-center gap-1.5 whitespace-nowrap font-mono text-stat-sm font-semibold tabular-nums tracking-tight text-foreground">
-          {euro(currency, fractionDigits).format(value)}
-          {trend && <TrendArrow up={trend === "up"} />}
+        <p
+          className={`${VALUE_ROW} whitespace-nowrap font-mono text-stat-sm font-semibold tabular-nums tracking-tight text-foreground`}
+        >
+          {/* Innerer Wrapper: Pfeil mittig ZUM TEXT, nicht zur (höheren) Wert-Box. */}
+          <span className="flex items-center gap-1.5">
+            {euro(currency, fractionDigits).format(value)}
+            {trend && <TrendArrow up={trend === "up"} />}
+          </span>
         </p>
       ) : (
-        <p className="mt-1.5 whitespace-nowrap font-mono text-stat font-semibold tabular-nums tracking-tight text-foreground">
+        <p
+          className={`${VALUE_ROW} whitespace-nowrap font-mono text-stat font-semibold tabular-nums tracking-tight text-foreground`}
+        >
           <CountUp value={value} prefix={prefix} />
         </p>
       )}
@@ -260,7 +275,11 @@ export async function DddKennzahlenCard({ title }: { title: string }) {
 
   return (
     <WidgetCard title={title} badge="Live" badgeTone="accent">
-      <div className="grid grid-cols-2 gap-5 sm:grid-cols-4 sm:gap-4">
+      {/* Ab sm: Flex statt Grid — jede Kachel flex-1 (gleiche Breite, unabhängig
+          von der Ziffernlänge), items-baseline richtet die Label-Zeilen aus; die
+          Wert-Baselines übernimmt die einheitliche VALUE_ROW-Box in KpiTile.
+          Mobil bleibt das kompakte 2er-Grid. */}
+      <div className="grid grid-cols-2 gap-5 sm:flex sm:items-baseline sm:gap-4">
         <KpiTile
           label="Gesamt-User"
           value={usersData?.total}
