@@ -195,13 +195,12 @@ const loadKennzahlen = unstable_cache(
 
 // ─── Bausteine ───────────────────────────────────────────────────────────────
 
-// Einheitliche Wert-Zeile für alle KPI-Kacheln: min-h entspricht exakt der
-// Zeilenbox von text-stat (Font-clamp × line-height 1.1, siehe
-// tailwind.config.ts) — dadurch ist die Box bei JEDER Viewport-Breite gleich
-// hoch, egal ob der Wert in text-stat oder text-stat-sm gesetzt ist. items-end
-// richtet die Ziffern-Unterkanten aus (Mono-Tabellenziffern haben keine
-// Unterlängen → optisch identische Baseline über alle Kacheln hinweg).
-const VALUE_ROW = "mt-1.5 flex min-h-[calc(clamp(1.5rem,1.1rem+1.5vw,2.25rem)*1.1)] items-end";
+// Einheitliche Wert-Zeile für alle KPI-Kacheln. Alle Werte stehen in EINER
+// Größe (text-stat-sm) — die frühere Mischung aus text-stat (Zähler) und
+// text-stat-sm (Euro) erzeugte unterschiedlich hohe Zeilenboxen und damit
+// springende Baselines zwischen den Kacheln.
+const VALUE_ROW =
+  "mt-1.5 flex items-baseline whitespace-nowrap font-mono text-stat-sm font-semibold tabular-nums tracking-tight";
 
 export function KpiTile({
   label,
@@ -210,6 +209,7 @@ export function KpiTile({
   currency,
   fractionDigits = 0,
   trend,
+  centered = false,
   missing,
 }: {
   label: string;
@@ -220,27 +220,27 @@ export function KpiTile({
   fractionDigits?: number;
   /** Richtungs-Pfeil neben dem Wert (Monochrom-System: Pfeil statt Farbe). */
   trend?: "up" | "down" | null;
+  /** Label + Wert mittig unter­einander (Kennzahlen-Reihe). */
+  centered?: boolean;
   missing?: string;
 }) {
+  const align = centered ? "justify-center text-center" : "";
   return (
-    <div className="min-w-0 flex-1">
-      <p className="text-xs uppercase tracking-[0.12em] text-muted">{label}</p>
+    <div className={`min-w-0 flex-1 ${centered ? "text-center" : ""}`}>
+      {/* truncate: das Label darf NIE zweizeilig werden — ein umgebrochenes
+          Label schöbe den Wert nach unten und bräche die Reihen-Baseline. */}
+      <p className="truncate text-xs uppercase tracking-[0.12em] text-muted">{label}</p>
       {missing || value === undefined ? (
-        <p className={`${VALUE_ROW} font-mono text-stat font-semibold text-muted`}>—</p>
+        <p className={`${VALUE_ROW} ${align} text-muted`}>—</p>
       ) : currency ? (
-        <p
-          className={`${VALUE_ROW} whitespace-nowrap font-mono text-stat-sm font-semibold tabular-nums tracking-tight text-foreground`}
-        >
-          {/* Innerer Wrapper: Pfeil mittig ZUM TEXT, nicht zur (höheren) Wert-Box. */}
+        <p className={`${VALUE_ROW} ${align} text-foreground`}>
           <span className="flex items-center gap-1.5">
             {euro(currency, fractionDigits).format(value)}
             {trend && <TrendArrow up={trend === "up"} />}
           </span>
         </p>
       ) : (
-        <p
-          className={`${VALUE_ROW} whitespace-nowrap font-mono text-stat font-semibold tabular-nums tracking-tight text-foreground`}
-        >
+        <p className={`${VALUE_ROW} ${align} text-foreground`}>
           <CountUp value={value} prefix={prefix} />
         </p>
       )}
@@ -282,11 +282,13 @@ export async function DddKennzahlenCard({ title }: { title: string }) {
       <div className="grid grid-cols-2 gap-5 sm:flex sm:items-baseline sm:gap-4">
         <KpiTile
           label="Gesamt-User"
+          centered
           value={usersData?.total}
           missing={usersData ? undefined : "Quelle nicht konfiguriert (TODO)"}
         />
         <KpiTile
           label="ARPU"
+          centered
           // umsatz in ddd_stats ist Euro; user_count 0 → current null → "—".
           value={arpuData?.current ?? undefined}
           currency="eur"
@@ -296,13 +298,15 @@ export async function DddKennzahlenCard({ title }: { title: string }) {
         />
         <KpiTile
           label="Monatsumsatz"
+          centered
           value={stripeData?.monthRevenue}
           currency={currency}
           missing={
             stripeMissing ? "STRIPE_SECRET_KEY setzen" : stripeError ? "Stripe-API-Fehler – Log prüfen" : undefined
           }
         />
-        <KpiTile label="Seitenaufrufe heute" value={pvData?.today} />
+        {/* Kurzes Label — "Seitenaufrufe heute" bricht auf MacBook-Breiten um. */}
+        <KpiTile label="Aufrufe heute" centered value={pvData?.today} />
       </div>
       <SectionNote>
         Quellen: Supabase-RPC (<span className="font-mono">get_user_stats</span>) ·
