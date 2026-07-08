@@ -30,7 +30,10 @@ export default function Widget({ title, index, skeleton = "list", dataId, href, 
   const isFocused = focused === index;
 
   return (
-    <div className="mb-4 break-inside-avoid sm:mb-5">
+    {/* transform-gpu + will-change: eigener Compositing-Layer pro Widget —
+        Workaround für Safari-Bug, bei dem Karten im Multi-Column-Layout
+        beim Hover (Transform-Transition) verschwinden. */}
+    <div className="mb-4 transform-gpu break-inside-avoid will-change-transform sm:mb-5">
     <Reveal delayMs={index * 50}>
       <div
         data-widget={dataId}
