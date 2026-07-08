@@ -4,6 +4,7 @@ import MultiLineChart from "@/components/dashboard/MultiLineChart";
 import PlanPie, { type PlanSlice } from "@/components/dashboard/PlanPie";
 import ErrorNote from "@/components/ErrorNote";
 import Reveal from "@/components/Reveal";
+import TrendArrow from "@/components/TrendArrow";
 import WidgetCard from "@/components/WidgetCard";
 import { DASHBOARD_SCHEMA, getSupabase, supabaseHint } from "@/lib/supabase";
 import { loadStripe } from "@/lib/stripe";
@@ -24,8 +25,13 @@ const dayLabel = new Intl.DateTimeFormat("de-AT", { timeZone: TZ, day: "numeric"
 const dayFull = new Intl.DateTimeFormat("de-AT", { timeZone: TZ, weekday: "short", day: "numeric", month: "long" });
 const dateFull = new Intl.DateTimeFormat("de-AT", { timeZone: TZ, day: "numeric", month: "long", year: "numeric" });
 
-const euro = (currency: string) =>
-  new Intl.NumberFormat("de-AT", { style: "currency", currency: currency.toUpperCase(), maximumFractionDigits: 0 });
+const euro = (currency: string, fractionDigits = 0) =>
+  new Intl.NumberFormat("de-AT", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  });
 
 // ─── Datenlader ──────────────────────────────────────────────────────────────
 
@@ -133,10 +139,20 @@ export async function loadDddUsers(): Promise<{ data: DddUsers } | { error: stri
   }
 }
 
-type Trades = { count: number; updatedAt: string | null };
+type Arpu = {
+  /** Aktueller ARPU in Euro — null bei user_count 0 (keine Division durch 0). */
+  current: number | null;
+  /** ARPU des jüngsten Eintrags eines FRÜHEREN Wiener Kalendertags — null ohne Historie. */
+  previous: number | null;
+};
 
-/** "Trades"-Kennzahl aus dashboard.ddd_stats (befüllt vom Sync-Script). */
-export async function loadTrades(): Promise<{ data: Trades } | { error: string }> {
+/**
+ * ARPU (Average Revenue Per User) = umsatz / user_count aus dashboard.ddd_stats
+ * (befüllt vom Sync-Script). Für den Trend-Pfeil dient der jüngste Eintrag
+ * eines früheren Wiener Kalendertags als Vergleichsbasis — schreibt das
+ * Sync-Script keine historischen Zeilen, entfällt der Pfeil einfach.
+ */
+export async function loadArpu(): Promise<{ data: Arpu } | { error: string }> {
   const supabase = getSupabase();
   if (!supabase) return { error: "SUPABASE_URL und SUPABASE_ANON_KEY in .env.local setzen." };
 
@@ -144,13 +160,23 @@ export async function loadTrades(): Promise<{ data: Trades } | { error: string }
     const { data, error } = await supabase
       .schema(DASHBOARD_SCHEMA)
       .from("ddd_stats")
-      .select("trade_count, updated_at")
+      .select("umsatz, user_count, updated_at")
       .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(100);
     if (error) return { error: supabaseHint(error.code, error.message, "ddd_stats") };
-    if (!data) return { error: "Tabelle „dashboard.ddd_stats“ ist noch leer." };
-    return { data: { count: Number(data.trade_count ?? 0), updatedAt: data.updated_at ?? null } };
+
+    type Row = { umsatz: number | string; user_count: number; updated_at: string | null };
+    const rows = (data ?? []) as Row[];
+    if (rows.length === 0) return { error: "Tabelle „dashboard.ddd_stats“ ist noch leer." };
+
+    const arpuOf = (r: Row) => (r.user_count > 0 ? Number(r.umsatz) / r.user_count : null);
+    const latest = rows[0];
+    const latestDay = latest.updated_at ? dayKey.format(new Date(latest.updated_at)) : null;
+    const prevRow = latestDay
+      ? rows.find((r) => r.updated_at && dayKey.format(new Date(r.updated_at)) !== latestDay)
+      : undefined;
+
+    return { data: { current: arpuOf(latest), previous: prevRow ? arpuOf(prevRow) : null } };
   } catch {
     return { error: "Supabase (ddd_stats) ist gerade nicht erreichbar." };
   }
@@ -161,8 +187,9 @@ export async function loadTrades(): Promise<{ data: Trades } | { error: string }
 // der Overview (60 s) die teuren Stripe-Paginierungs-Calls 5× häufiger als
 // für die DDD-Seite (300 s) vorgesehen.
 const loadKennzahlen = unstable_cache(
-  async () => Promise.all([loadPageViews(), loadDddUsers(), loadStripe(), loadTrades()]),
-  ["ddd-kennzahlen"],
+  async () => Promise.all([loadPageViews(), loadDddUsers(), loadStripe(), loadArpu()]),
+  // v2: Cache-Key gewechselt, damit kein gecachtes Trades-Tupel mehr ausgeliefert wird.
+  ["ddd-kennzahlen-v2"],
   { revalidate: 300 }
 );
 
@@ -173,12 +200,18 @@ export function KpiTile({
   value,
   prefix,
   currency,
+  fractionDigits = 0,
+  trend,
   missing,
 }: {
   label: string;
   value?: number;
   prefix?: string;
   currency?: string;
+  /** Nachkommastellen für Währungsbeträge (Standard 0, z. B. 2 für ARPU). */
+  fractionDigits?: number;
+  /** Richtungs-Pfeil neben dem Wert (Monochrom-System: Pfeil statt Farbe). */
+  trend?: "up" | "down" | null;
   missing?: string;
 }) {
   return (
@@ -187,8 +220,9 @@ export function KpiTile({
       {missing || value === undefined ? (
         <p className="mt-1.5 font-mono text-stat font-semibold text-muted">—</p>
       ) : currency ? (
-        <p className="mt-1.5 whitespace-nowrap font-mono text-stat-sm font-semibold tabular-nums tracking-tight text-foreground">
-          {euro(currency).format(value)}
+        <p className="mt-1.5 flex items-center gap-1.5 whitespace-nowrap font-mono text-stat-sm font-semibold tabular-nums tracking-tight text-foreground">
+          {euro(currency, fractionDigits).format(value)}
+          {trend && <TrendArrow up={trend === "up"} />}
         </p>
       ) : (
         <p className="mt-1.5 whitespace-nowrap font-mono text-stat font-semibold tabular-nums tracking-tight text-foreground">
@@ -207,11 +241,18 @@ export function SectionNote({ children }: { children: React.ReactNode }) {
 // ─── Gemeinsame Kennzahlen-Karte (Overview-Widget + /ddd-Seite) ──────────────
 
 export async function DddKennzahlenCard({ title }: { title: string }) {
-  const [pv, users, stripe, trades] = await loadKennzahlen();
+  const [pv, users, stripe, arpu] = await loadKennzahlen();
 
   const pvData = "data" in pv ? pv.data : null;
   const usersData = "data" in users ? users.data : null;
-  const tradesData = "data" in trades ? trades.data : null;
+  const arpuData = "data" in arpu ? arpu.data : null;
+  // Pfeil nur, wenn ein Vortages-Wert existiert und sich der ARPU bewegt hat.
+  const arpuTrend =
+    arpuData?.current != null && arpuData.previous != null && arpuData.current !== arpuData.previous
+      ? arpuData.current > arpuData.previous
+        ? ("up" as const)
+        : ("down" as const)
+      : null;
   const stripeData = stripe && "mrr" in stripe ? stripe : null;
   const stripeError = stripe && "error" in stripe ? stripe.error : null;
   const stripeMissing = stripe === null;
@@ -226,9 +267,13 @@ export async function DddKennzahlenCard({ title }: { title: string }) {
           missing={usersData ? undefined : "Quelle nicht konfiguriert (TODO)"}
         />
         <KpiTile
-          label="Trades"
-          value={tradesData?.count}
-          missing={tradesData ? undefined : (trades as { error: string }).error}
+          label="ARPU"
+          // umsatz in ddd_stats ist Euro; user_count 0 → current null → "—".
+          value={arpuData?.current ?? undefined}
+          currency="eur"
+          fractionDigits={2}
+          trend={arpuTrend}
+          missing={arpuData ? undefined : (arpu as { error: string }).error}
         />
         <KpiTile
           label="Monatsumsatz"
