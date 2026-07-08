@@ -10,8 +10,8 @@ export default function RedzonePage() {
   return (
     <>
       <PageHeader title="RedzoneEarth" subtitle="Werbeerlöse" />
-      <main className="flex-1 py-8 sm:py-10">
-        <div className="max-w-3xl">
+      <main className="mx-auto w-full max-w-[1800px] flex-1 px-5 py-8 sm:px-8 sm:py-10">
+        <div className="mx-auto max-w-3xl">
           <Widget title="RedzoneEarth Ads" index={0} skeleton="stats">
             <RedzoneEarthAds />
           </Widget>

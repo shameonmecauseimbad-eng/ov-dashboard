@@ -10,8 +10,8 @@ export default function SocialPage() {
   return (
     <>
       <PageHeader title="Social Media" subtitle="Follower & Reichweite" />
-      <main className="flex-1 py-8 sm:py-10">
-        <div className="max-w-3xl">
+      <main className="mx-auto w-full max-w-[1800px] flex-1 px-5 py-8 sm:px-8 sm:py-10">
+        <div className="mx-auto max-w-3xl">
           <Widget title="Social Media" index={0}>
             <SocialMedia />
           </Widget>

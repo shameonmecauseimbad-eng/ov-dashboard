@@ -9,8 +9,8 @@ export default function BriefingPage() {
   return (
     <>
       <PageHeader title="Morgen-Briefing" subtitle="Neuester Stand pro Thema" />
-      <main className="flex-1 py-8 sm:py-10">
-        <div className="max-w-3xl">
+      <main className="mx-auto w-full max-w-[1800px] flex-1 px-5 py-8 sm:px-8 sm:py-10">
+        <div className="mx-auto max-w-3xl">
           <Widget title="Morgen-Briefing" index={0}>
             <MorgenBriefing />
           </Widget>

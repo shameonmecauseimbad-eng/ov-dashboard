@@ -9,8 +9,8 @@ export default function KryptoPage() {
   return (
     <>
       <PageHeader title="Krypto" subtitle="Kurse & 24h-Entwicklung" />
-      <main className="flex-1 py-8 sm:py-10">
-        <div className="max-w-3xl">
+      <main className="mx-auto w-full max-w-[1800px] flex-1 px-5 py-8 sm:px-8 sm:py-10">
+        <div className="mx-auto max-w-3xl">
           <Widget title="Krypto-Kurse" index={0}>
             <KryptoKurse />
           </Widget>
