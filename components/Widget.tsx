@@ -29,10 +29,9 @@ export default function Widget({ title, index, skeleton = "list", dataId, href, 
   const { focused, setFocused, enabled: focusEnabled } = useFocusZoom();
   const isFocused = focused === index;
 
+  // transform-gpu + will-change: eigener Compositing-Layer pro Widget — Workaround für
+  // Safari-Bug, bei dem Karten im Multi-Column-Layout beim Hover (Transform-Transition) verschwinden.
   return (
-    {/* transform-gpu + will-change: eigener Compositing-Layer pro Widget —
-        Workaround für Safari-Bug, bei dem Karten im Multi-Column-Layout
-        beim Hover (Transform-Transition) verschwinden. */}
     <div className="mb-4 transform-gpu break-inside-avoid will-change-transform sm:mb-5">
     <Reveal delayMs={index * 50}>
       <div
