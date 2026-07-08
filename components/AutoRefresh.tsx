@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 const REFRESH_MS = 5 * 60_000;
 
@@ -33,7 +33,15 @@ export default function AutoRefresh() {
   }, [router]);
 
   // Loading-Zustand global broadcasten (SpinningLogo dreht/pulst darauf).
+  // Der Initial-Mount wird übersprungen: isPending startet false, ein sofortiges
+  // "ov:loaded" würde den Abschluss-Puls des Logos feuern, obwohl noch gar kein
+  // Refresh stattgefunden hat.
+  const mounted = useRef(false);
   useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
     window.dispatchEvent(new CustomEvent(isPending ? "ov:loading" : "ov:loaded"));
   }, [isPending]);
 

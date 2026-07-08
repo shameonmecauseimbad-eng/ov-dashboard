@@ -18,15 +18,25 @@ export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|robots.txt).*)"],
 };
 
-/** Längen-unabhängiger Vergleich, um Timing-Rückschlüsse zu vermeiden. */
-function safeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
+/**
+ * Timing-sicherer Vergleich: beide Seiten werden erst SHA-256-gehasht (feste
+ * Länge), dann byteweise ohne Short-Circuit verglichen. Ein Längen-Early-Return
+ * auf den Rohstrings würde die Credential-Länge über die Antwortzeit leaken.
+ */
+async function safeEqual(a: string, b: string): Promise<boolean> {
+  const enc = new TextEncoder();
+  const [ha, hb] = await Promise.all([
+    crypto.subtle.digest("SHA-256", enc.encode(a)),
+    crypto.subtle.digest("SHA-256", enc.encode(b)),
+  ]);
+  const va = new Uint8Array(ha);
+  const vb = new Uint8Array(hb);
   let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  for (let i = 0; i < va.length; i++) diff |= va[i] ^ vb[i];
   return diff === 0;
 }
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const user = process.env.DASHBOARD_AUTH_USER;
   const pass = process.env.DASHBOARD_AUTH_PASSWORD;
 
@@ -47,7 +57,8 @@ export function middleware(req: NextRequest) {
       const u = decoded.slice(0, sep);
       const p = decoded.slice(sep + 1);
       // Beide Vergleiche immer ausführen (kein Short-Circuit-Timing-Leak).
-      const ok = safeEqual(u, user) && safeEqual(p, pass);
+      const [userOk, passOk] = await Promise.all([safeEqual(u, user), safeEqual(p, pass)]);
+      const ok = userOk && passOk;
       if (ok) return NextResponse.next();
     }
   }

@@ -26,7 +26,7 @@ type WidgetProps = {
  * intakt.
  */
 export default function Widget({ title, index, skeleton = "list", dataId, href, children }: WidgetProps) {
-  const { focused, setFocused } = useFocusZoom();
+  const { focused, setFocused, enabled: focusEnabled } = useFocusZoom();
   const isFocused = focused === index;
 
   return (
@@ -57,23 +57,25 @@ export default function Widget({ title, index, skeleton = "list", dataId, href, 
               </svg>
             </Link>
           )}
-          <button
-            type="button"
-            onClick={() => setFocused(isFocused ? null : index)}
-            aria-label={isFocused ? "Fokus verlassen" : `${title} fokussieren`}
-            className="flex h-7 w-7 items-center justify-center rounded-lg border border-line bg-raised text-muted opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
-          >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-              <path
-                d="M4 9 V4 H9 M15 4 H20 V9 M20 15 V20 H15 M9 20 H4 V15"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
+          {focusEnabled && (
+            <button
+              type="button"
+              onClick={() => setFocused(isFocused ? null : index)}
+              aria-label={isFocused ? "Fokus verlassen" : `${title} fokussieren`}
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-line bg-raised text-muted opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+                <path
+                  d="M4 9 V4 H9 M15 4 H20 V9 M20 15 V20 H15 M9 20 H4 V15"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          )}
         </div>
         <WidgetBoundary title={title}>
           <Suspense fallback={<WidgetSkeleton title={title} variant={skeleton} />}>

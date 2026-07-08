@@ -4,7 +4,7 @@ import KryptoKurse from "@/components/widgets/KryptoKurse";
 
 export const metadata = { title: "Krypto · Overview Dashboard" };
 
-/* Ausbau-Kandidat: Template von app/ddd/page.tsx (KpiRow/TrendChart/HistoryTable). */
+/* Ausbau-Kandidat: Template von app/ddd/page.tsx (DddDetail: KpiTile-Grid + MultiLineChart). */
 export default function KryptoPage() {
   return (
     <>

@@ -111,18 +111,25 @@ export async function loadStripe(): Promise<StripeResult | { error: string } | n
   }
 
   try {
-    // 12 Monats-Buckets vorbereiten (aktueller Monat zuletzt).
-    const now = new Date();
+    // 12 Monats-Buckets vorbereiten (aktueller Monat zuletzt). Jahr/Monat
+    // kommen aus der WIENER Sicht von "jetzt" — die Server-lokalen Date-Felder
+    // (auf Vercel: UTC) wären rund um den Wiener Monatswechsel bis zu ~2 h im
+    // Vormonat, Rechnungen des neuen Monats fänden dann keinen Bucket. Die
+    // Bucket-Instanzen liegen auf Monatsmitte 12:00 UTC, damit monthKey/
+    // monthLabel sie in jeder Server-Zeitzone dem richtigen Monat zuordnen.
+    const [vYear, vMonth] = monthKey.format(new Date()).split("-").map(Number);
     const buckets: MonthPoint[] = [];
     const idx = new Map<string, number>();
     for (let i = 11; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const d = new Date(Date.UTC(vYear, vMonth - 1 - i, 15, 12));
       const point = { month: monthKey.format(d), label: monthLabel.format(d), umsatz: 0 };
       idx.set(point.month, buckets.length);
       buckets.push(point);
     }
 
-    const since = Math.floor(new Date(now.getFullYear(), now.getMonth() - 11, 1).getTime() / 1000);
+    // Untergrenze mit 1 Tag Puffer — zu früh geholte Rechnungen fallen beim
+    // Bucket-Zuordnen ohnehin heraus, zu spät gesetzte würden fehlen.
+    const since = Math.floor(Date.UTC(vYear, vMonth - 1 - 11, 1) / 1000) - 86_400;
 
     const [invoices, subscriptions] = await Promise.all([
       listAll<StripeInvoice>("invoices", `&status=paid&created[gte]=${since}`, key),

@@ -5,11 +5,16 @@ import { createContext, useContext, useEffect, useState } from "react";
 type FocusContextValue = {
   focused: number | null;
   setFocused: (index: number | null) => void;
+  /** true nur innerhalb eines FocusZoomProvider — ohne Provider wäre der
+   *  Fokus-Button ein totes UI-Element (No-op-Default), Widget blendet ihn
+   *  dann aus. */
+  enabled: boolean;
 };
 
 const FocusContext = createContext<FocusContextValue>({
   focused: null,
   setFocused: () => {},
+  enabled: false,
 });
 
 export function useFocusZoom() {
@@ -34,7 +39,7 @@ export default function FocusZoomProvider({ children }: { children: React.ReactN
   }, []);
 
   return (
-    <FocusContext.Provider value={{ focused, setFocused }}>
+    <FocusContext.Provider value={{ focused, setFocused, enabled: true }}>
       {focused !== null && (
         <div
           onClick={() => setFocused(null)}

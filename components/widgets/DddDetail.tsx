@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import CountUp from "@/components/CountUp";
 import MultiLineChart from "@/components/dashboard/MultiLineChart";
 import PlanPie, { type PlanSlice } from "@/components/dashboard/PlanPie";
@@ -41,10 +42,16 @@ export async function loadPageViews(): Promise<{ data: PageViews } | { error: st
   if (!supabase) return { error: "SUPABASE_URL und SUPABASE_ANON_KEY in .env.local setzen." };
 
   const now = Date.now();
+  // 30 Kalendertage aus WIENER Sicht: fixe 24-h-Schritte würden an
+  // DST-Übergängen (23-/25-h-Tage) zwei Instants demselben Wiener Tag zuordnen
+  // bzw. einen Tag überspringen — idx.set würde dann einen Tag überschreiben.
+  // Stattdessen Tages-Arithmetik auf dem Wiener Datum, verankert auf 12:00 UTC
+  // (liegt in jeder Sommer-/Winterzeit eindeutig im Ziel-Tag).
+  const [tYear, tMonth, tDay] = dayKey.format(now).split("-").map(Number);
   const days: Array<{ key: string; label: string; full: string; views: number }> = [];
   const idx = new Map<string, number>();
   for (let i = 29; i >= 0; i--) {
-    const d = new Date(now - i * 86_400_000);
+    const d = new Date(Date.UTC(tYear, tMonth - 1, tDay - i, 12));
     idx.set(dayKey.format(d), days.length);
     days.push({ key: dayKey.format(d), label: dayLabel.format(d), full: dayFull.format(d), views: 0 });
   }
@@ -126,6 +133,39 @@ export async function loadDddUsers(): Promise<{ data: DddUsers } | { error: stri
   }
 }
 
+type Trades = { count: number; updatedAt: string | null };
+
+/** "Trades"-Kennzahl aus dashboard.ddd_stats (befüllt vom Sync-Script). */
+export async function loadTrades(): Promise<{ data: Trades } | { error: string }> {
+  const supabase = getSupabase();
+  if (!supabase) return { error: "SUPABASE_URL und SUPABASE_ANON_KEY in .env.local setzen." };
+
+  try {
+    const { data, error } = await supabase
+      .schema(DASHBOARD_SCHEMA)
+      .from("ddd_stats")
+      .select("trade_count, updated_at")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) return { error: supabaseHint(error.code, error.message, "ddd_stats") };
+    if (!data) return { error: "Tabelle „dashboard.ddd_stats“ ist noch leer." };
+    return { data: { count: Number(data.trade_count ?? 0), updatedAt: data.updated_at ?? null } };
+  } catch {
+    return { error: "Supabase (ddd_stats) ist gerade nicht erreichbar." };
+  }
+}
+
+// Eine gemeinsame, gecachte Ladefunktion für alle Kennzahlen-Konsumenten
+// (Overview-Widget UND /ddd-Seite): sonst zieht das kürzere revalidate-Fenster
+// der Overview (60 s) die teuren Stripe-Paginierungs-Calls 5× häufiger als
+// für die DDD-Seite (300 s) vorgesehen.
+const loadKennzahlen = unstable_cache(
+  async () => Promise.all([loadPageViews(), loadDddUsers(), loadStripe(), loadTrades()]),
+  ["ddd-kennzahlen"],
+  { revalidate: 300 }
+);
+
 // ─── Bausteine ───────────────────────────────────────────────────────────────
 
 export function KpiTile({
@@ -164,43 +204,66 @@ export function SectionNote({ children }: { children: React.ReactNode }) {
   return <p className="mt-5 border-t border-line pt-4 text-xs text-muted">{children}</p>;
 }
 
-// ─── Widget-Inhalt (async: lädt alle Quellen parallel) ───────────────────────
+// ─── Gemeinsame Kennzahlen-Karte (Overview-Widget + /ddd-Seite) ──────────────
 
-export default async function DddDetail() {
-  const [pv, users, stripe] = await Promise.all([loadPageViews(), loadDddUsers(), loadStripe()]);
+export async function DddKennzahlenCard({ title }: { title: string }) {
+  const [pv, users, stripe, trades] = await loadKennzahlen();
 
   const pvData = "data" in pv ? pv.data : null;
   const usersData = "data" in users ? users.data : null;
+  const tradesData = "data" in trades ? trades.data : null;
   const stripeData = stripe && "mrr" in stripe ? stripe : null;
   const stripeError = stripe && "error" in stripe ? stripe.error : null;
   const stripeMissing = stripe === null;
   const currency = stripeData?.currency ?? "eur";
 
   return (
+    <WidgetCard title={title} badge="Live" badgeTone="accent">
+      <div className="grid grid-cols-2 gap-5 sm:grid-cols-4 sm:gap-4">
+        <KpiTile
+          label="Gesamt-User"
+          value={usersData?.total}
+          missing={usersData ? undefined : "Quelle nicht konfiguriert (TODO)"}
+        />
+        <KpiTile
+          label="Trades"
+          value={tradesData?.count}
+          missing={tradesData ? undefined : (trades as { error: string }).error}
+        />
+        <KpiTile
+          label="Monatsumsatz"
+          value={stripeData?.monthRevenue}
+          currency={currency}
+          missing={
+            stripeMissing ? "STRIPE_SECRET_KEY setzen" : stripeError ? "Stripe-API-Fehler – Log prüfen" : undefined
+          }
+        />
+        <KpiTile label="Seitenaufrufe heute" value={pvData?.today} />
+      </div>
+      <SectionNote>
+        Quellen: Supabase-RPC (<span className="font-mono">get_user_stats</span>) ·
+        <span className="font-mono"> dashboard.ddd_stats</span> · Stripe API ·
+        <span className="font-mono"> dashboard.page_views</span>
+      </SectionNote>
+    </WidgetCard>
+  );
+}
+
+// ─── Widget-Inhalt (async: lädt alle Quellen parallel) ───────────────────────
+
+export default async function DddDetail() {
+  const [pv, users, stripe] = await loadKennzahlen();
+
+  const pvData = "data" in pv ? pv.data : null;
+  const usersData = "data" in users ? users.data : null;
+  const stripeData = stripe && "mrr" in stripe ? stripe : null;
+  const stripeError = stripe && "error" in stripe ? stripe.error : null;
+  const currency = stripeData?.currency ?? "eur";
+
+  return (
     <div className="space-y-4 sm:space-y-5">
       {/* 1 — KPI-Karten */}
-      <WidgetCard title="Kennzahlen" badge="Live" badgeTone="accent">
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 sm:gap-4">
-          <KpiTile
-            label="Gesamt-User"
-            value={usersData?.total}
-            missing={usersData ? undefined : "Quelle nicht konfiguriert (TODO)"}
-          />
-          <KpiTile
-            label="Monatsumsatz"
-            value={stripeData?.monthRevenue}
-            currency={currency}
-            missing={
-              stripeMissing ? "STRIPE_SECRET_KEY setzen" : stripeError ? "Stripe-API-Fehler – Log prüfen" : undefined
-            }
-          />
-          <KpiTile label="Seitenaufrufe heute" value={pvData?.today} />
-        </div>
-        <SectionNote>
-          Quellen: Supabase-RPC (<span className="font-mono">get_user_stats</span>) · Stripe API ·
-          <span className="font-mono"> dashboard.page_views</span>
-        </SectionNote>
-      </WidgetCard>
+      <DddKennzahlenCard title="Kennzahlen" />
 
       {/* 2 — Umsatz-Entwicklung (Stripe MRR/Umsatz) */}
       <Reveal delayMs={100}>

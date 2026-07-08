@@ -99,6 +99,20 @@ function edgePoint(b: Box, side: Side): Point {
 const isHorizontalExit = (s: Side) => s === "left" || s === "right";
 
 /**
+ * Die Kanal-Geometrie setzt voraus, dass die Widgets entlang der Austrittsachse
+ * wirklich getrennt liegen (nebeneinander bzw. übereinander). Das Overview-
+ * Layout ist eine CSS-Multi-Column (columns-1 sm:columns-2) — deren Column-
+ * Balancing kann beide Widgets in DIESELBE Spalte legen, sobald sich Inhalts-
+ * höhen ändern; der Pfad liefe dann quer durch Karten. In dem Fall wird die
+ * Verbindung schlicht nicht gezeichnet.
+ */
+function sidesApart(a: Box, b: Box, c: Connection): boolean {
+  return isHorizontalExit(c.fromSide)
+    ? a.right <= b.left || b.right <= a.left
+    : a.bottom <= b.top || b.bottom <= a.top;
+}
+
+/**
  * Ordnet die Stützpunkte des Pfades. Der Verbindungskanal liegt MITTIG zwischen
  * den beiden zugewandten Kanten:
  *   • Seitlicher Austritt (left/right) → vertikaler Kanal bei der Mittel-X.
@@ -174,6 +188,7 @@ export default function ConnectionLines() {
         if (!aEl || !bEl) continue;
         const a = toBox(aEl.getBoundingClientRect());
         const b = toBox(bEl.getBoundingClientRect());
+        if (!sidesApart(a, b, c)) continue;
         const pts = routePoints(a, b, c);
         next.push({ d: roundedOrthPath(pts, CORNER_RADIUS), nodes: [pts[0], pts[pts.length - 1]] });
       }

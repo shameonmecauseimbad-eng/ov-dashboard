@@ -35,7 +35,7 @@ export default function WidgetCard({
             className={
               badgeTone === "accent"
                 ? "inline-flex items-center gap-1.5 rounded-full bg-accent-dim px-2.5 py-0.5 text-xs font-medium text-accent animate-glow-once motion-reduce:animate-none"
-                : "rounded-full bg-white/5 px-2.5 py-0.5 text-xs font-medium text-muted opacity-70 animate-fade-in motion-reduce:animate-none"
+                : "rounded-full bg-white/5 px-2.5 py-0.5 text-xs font-medium text-muted animate-fade-in motion-reduce:animate-none"
             }
           >
             {badgeTone === "accent" && (

@@ -5,7 +5,7 @@ import RedzoneEarthAds from "@/components/widgets/RedzoneEarthAds";
 export const metadata = { title: "RedzoneEarth · Overview Dashboard" };
 
 /* Sobald echte Ad-Daten fließen: nach dem Vorbild von app/ddd/page.tsx
-   auf KpiRow + TrendChart + HistoryTable ausbauen. */
+   (DddDetail: KpiTile-Grid + MultiLineChart) ausbauen. */
 export default function RedzonePage() {
   return (
     <>

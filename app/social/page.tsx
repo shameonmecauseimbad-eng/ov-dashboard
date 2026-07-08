@@ -5,7 +5,7 @@ import SocialMedia from "@/components/widgets/SocialMedia";
 export const metadata = { title: "Social Media · Overview Dashboard" };
 export const revalidate = 60;
 
-/* Ausbau-Kandidat: Template von app/ddd/page.tsx (KpiRow/TrendChart/HistoryTable). */
+/* Ausbau-Kandidat: Template von app/ddd/page.tsx (DddDetail: KpiTile-Grid + MultiLineChart). */
 export default function SocialPage() {
   return (
     <>
