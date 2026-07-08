@@ -10,11 +10,9 @@ export default function KalenderPage() {
     <>
       <PageHeader title="Kalender" subtitle="Google Calendar + Tasks · Europe/Vienna" />
       <main className="mx-auto w-full max-w-[1800px] flex-1 px-5 py-8 sm:px-8 sm:py-10">
-        <div className="mx-auto max-w-3xl">
-          <Widget title="Kalender & Erinnerungen" index={0}>
-            <KalenderErinnerungen />
-          </Widget>
-        </div>
+        <Widget title="Kalender & Erinnerungen" index={0}>
+          <KalenderErinnerungen />
+        </Widget>
       </main>
     </>
   );

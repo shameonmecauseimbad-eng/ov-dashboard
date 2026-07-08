@@ -21,7 +21,7 @@ export default function Home() {
 
       <FocusZoomProvider>
         <div className="mx-auto w-full max-w-[1800px] flex-1 px-5 sm:px-8">
-        <main className="columns-1 gap-4 py-8 sm:columns-2 sm:gap-5 sm:py-10">
+        <main className="grid grid-cols-1 items-start gap-4 py-8 sm:grid-cols-2 sm:gap-5 sm:py-10">
         {/* Tagesüberblick zuerst — Reihenfolge = DOM-Reihenfolge,
             gilt auch für die einspaltige Mobile-Ansicht. */}
         <Widget title="Morgen-Briefing" index={0} dataId="briefing" href="/briefing">
