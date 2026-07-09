@@ -30,7 +30,7 @@ export default function Widget({ title, index, skeleton = "list", dataId, href, 
   const isFocused = focused === index;
 
   return (
-    <div className="h-full">
+    <div>
     <Reveal delayMs={index * 50}>
       <div
         data-widget={dataId}

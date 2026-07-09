@@ -21,37 +21,45 @@ export default function Home() {
 
       <FocusZoomProvider>
         <div className="mx-auto w-full max-w-[1800px] flex-1 px-5 sm:px-8">
-        {/* grid-flow-col + grid-rows-4: Spalten befüllen sich von oben nach
-            unten (0,1,2,3 links / 4,5,6 rechts) wie zuvor im Multi-Column-
-            Layout — aber als echtes CSS-Grid, damit der Safari-Hover-Bug
-            (Karten verschwinden) nicht zurückkommt. Bei neuen Widgets
-            grid-rows-N auf ceil(Anzahl/2) anpassen. */}
-        <main className="grid grid-cols-1 items-stretch gap-4 py-8 sm:grid-cols-2 sm:grid-flow-col sm:grid-rows-4 sm:gap-5 sm:py-10">
-        {/* Tagesüberblick zuerst — Reihenfolge = DOM-Reihenfolge,
-            gilt auch für die einspaltige Mobile-Ansicht. */}
-        <Widget title="Morgen-Briefing" index={0} dataId="briefing" href="/briefing">
-          <MorgenBriefing />
-        </Widget>
-        <Widget title="Kalender & Erinnerungen" index={1} href="/kalender">
-          <KalenderErinnerungen />
-        </Widget>
-        <Widget title="DDD Statistics" index={2} skeleton="stats" href="/ddd">
-          <DddKennzahlen />
-        </Widget>
-        <Widget title="GitHub Activity" index={3}>
-          <GithubActivity />
-        </Widget>
-        <Widget title="Social Media" index={4} href="/social">
-          <SocialMedia />
-        </Widget>
-        <Widget title="Krypto-Kurse" index={5} dataId="krypto" href="/krypto">
-          <KryptoKurse />
-        </Widget>
-        <Widget title="RedzoneEarth Ads" index={6} skeleton="stats" href="/redzone">
-          <RedzoneEarthAds />
-        </Widget>
-        {/* Neue Widgets: Komponente unter components/widgets/ anlegen und
-            hier in <Widget title="…" index={…}> einhängen. */}
+        {/* Zwei unabhängige Flex-Spalten statt CSS-Grid: Echtes Grid erzwingt
+            gleiche Zeilenhöhe über beide Spalten hinweg (items-stretch je
+            Reihe) — bei unterschiedlich hohen Karten entstehen dadurch große
+            Lücken. CSS-Multi-Column (columns-2) hatte dieses Problem nicht,
+            triggert aber den Safari-Hover-Bug (Karten verschwinden). Zwei
+            eigenständige Flex-Spalten packen unabhängig ohne Zeilenzwang und
+            ohne Column-Fragmentierung. Mobile: beide Spalten stapeln sich zur
+            natürlichen DOM-Reihenfolge 0..6. Bei neuen Widgets die Aufteilung
+            unten manuell balancieren. */}
+        <main className="flex flex-col gap-4 py-8 sm:flex-row sm:gap-5 sm:py-10">
+        <div className="flex flex-1 flex-col gap-4 sm:gap-5">
+          {/* Tagesüberblick zuerst — Reihenfolge = DOM-Reihenfolge,
+              gilt auch für die einspaltige Mobile-Ansicht. */}
+          <Widget title="Morgen-Briefing" index={0} dataId="briefing" href="/briefing">
+            <MorgenBriefing />
+          </Widget>
+          <Widget title="Kalender & Erinnerungen" index={1} href="/kalender">
+            <KalenderErinnerungen />
+          </Widget>
+          <Widget title="DDD Statistics" index={2} skeleton="stats" href="/ddd">
+            <DddKennzahlen />
+          </Widget>
+          <Widget title="GitHub Activity" index={3}>
+            <GithubActivity />
+          </Widget>
+        </div>
+        <div className="flex flex-1 flex-col gap-4 sm:gap-5">
+          <Widget title="Social Media" index={4} href="/social">
+            <SocialMedia />
+          </Widget>
+          <Widget title="Krypto-Kurse" index={5} dataId="krypto" href="/krypto">
+            <KryptoKurse />
+          </Widget>
+          <Widget title="RedzoneEarth Ads" index={6} skeleton="stats" href="/redzone">
+            <RedzoneEarthAds />
+          </Widget>
+          {/* Neue Widgets: Komponente unter components/widgets/ anlegen und
+              hier in <Widget title="…" index={…}> einhängen. */}
+        </div>
         </main>
         </div>
       </FocusZoomProvider>
