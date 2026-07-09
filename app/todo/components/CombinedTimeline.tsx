@@ -1,6 +1,33 @@
 import PriorityBadge from "@/app/todo/components/PriorityBadge";
 import { PROJECT_TAG_LABEL, PRIORITY_STYLE, type TaskOrEvent } from "@/lib/todo-types";
 
+type TimelineProps = {
+  items: TaskOrEvent[];
+  /** Erledigt-Status einer eigenen Aufgabe umschalten (nur source === "user"). */
+  onToggle?: (id: string) => void;
+  /** Eigene Aufgabe löschen (nur source === "user"). */
+  onRemove?: (id: string) => void;
+};
+
+/** Erledigt-Kreis bzw. Häkchen für eigene Aufgaben. */
+function DoneToggle({ done, onClick }: { done: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={done ? "Als offen markieren" : "Als erledigt markieren"}
+      aria-pressed={done}
+      className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-white/30 text-foreground transition-colors hover:border-white/60"
+    >
+      {done && (
+        <svg viewBox="0 0 12 12" className="h-2.5 w-2.5" aria-hidden="true">
+          <path d="M2 6.5 L5 9 L10 3" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
 const TZ = "Europe/Vienna";
 const dayKey = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" });
 const dayHead = new Intl.DateTimeFormat("de-AT", { weekday: "long", day: "numeric", month: "long", timeZone: TZ });
@@ -43,7 +70,7 @@ function timeLabel(it: TaskOrEvent): string {
  * Priorität wirkt über Font-Weight/Opacity auf den Titel; erledigte Punkte
  * sind durchgestrichen und gedämpft.
  */
-export default function CombinedTimeline({ items }: { items: TaskOrEvent[] }) {
+export default function CombinedTimeline({ items, onToggle, onRemove }: TimelineProps) {
   const todayStr = dayKey.format(new Date());
   const groups = groupByDay(items, todayStr);
 
@@ -66,6 +93,9 @@ export default function CombinedTimeline({ items }: { items: TaskOrEvent[] }) {
                     it.type === "event" ? "border-solid border-line" : "border-dashed border-white/20"
                   } ${it.done ? "opacity-50" : ""}`}
                 >
+                  {it.source === "user" && onToggle ? (
+                    <DoneToggle done={it.done} onClick={() => onToggle(it.id)} />
+                  ) : null}
                   <span className="w-14 shrink-0 font-mono text-xs tabular-nums text-muted">{timeLabel(it)}</span>
                   <span className="flex min-w-0 flex-1 items-center gap-2">
                     <span
@@ -78,11 +108,28 @@ export default function CombinedTimeline({ items }: { items: TaskOrEvent[] }) {
                     <span className="shrink-0 text-[10px] uppercase tracking-[0.1em] text-muted">
                       {it.type === "event" ? "Termin" : "To-Do"}
                     </span>
+                    {it.source === "user" && (
+                      <span className="shrink-0 text-[10px] uppercase tracking-[0.1em] text-muted opacity-70">
+                        · eigen
+                      </span>
+                    )}
                   </span>
                   <span className="hidden shrink-0 rounded-full border border-line px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-muted sm:inline">
                     {PROJECT_TAG_LABEL[it.projectTag]}
                   </span>
                   <PriorityBadge priority={it.priority} />
+                  {it.source === "user" && onRemove ? (
+                    <button
+                      type="button"
+                      onClick={() => onRemove(it.id)}
+                      aria-label="Aufgabe löschen"
+                      className="shrink-0 text-muted transition-colors hover:text-foreground"
+                    >
+                      <svg viewBox="0 0 14 14" className="h-3.5 w-3.5" aria-hidden="true">
+                        <path d="M3 3 L11 11 M11 3 L3 11" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  ) : null}
                 </li>
               );
             })}

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { generateTasksAndEvents } from "@/lib/todo-mock";
+import { useUserTasks } from "@/lib/todo-store";
 import type { TaskOrEvent } from "@/lib/todo-types";
 
 const TZ = "Europe/Vienna";
@@ -31,10 +32,15 @@ function sortChrono(a: TaskOrEvent, b: TaskOrEvent): number {
  * Aktuell liefert der Hook deterministische Platzhalter-Daten aus
  * generateTasksAndEvents() (fester Datensatz, kein Hydration-Mismatch).
  *
+ * Selbst erstellte Aufgaben (lib/todo-store.ts, localStorage) werden hier mit
+ * dem Platzhalter-Datensatz zusammengeführt — sie erscheinen dadurch überall
+ * (Fokus-Widget, Zeitleiste). Die User-Aufgaben laden erst NACH dem Mount
+ * (SSR-sicher leer), daher kein Hydration-Mismatch.
+ *
  * ANBINDUNG SPÄTER (bewusst als Naht angelegt): Die App kann MCP nicht selbst
  * aufrufen — die iOS-/Google-Kalender-MCP-Verbindung lebt im Claude-Client,
- * nicht im Vercel-Runtime. Der Weg zu echten Daten führt daher wie bei den
- * übrigen Widgets über Supabase:
+ * nicht im Vercel-Runtime. Der Weg zu echten Kalenderdaten führt daher wie bei
+ * den übrigen Widgets über Supabase:
  *   1. Tabelle dashboard.todo_items anlegen (Migration analog social_stats).
  *   2. Agent/Hermes synct Kalender+Erinnerungen per MCP → Supabase.
  *   3. Hier generateTasksAndEvents() gegen einen Fetch auf einen Route Handler
@@ -43,12 +49,15 @@ function sortChrono(a: TaskOrEvent, b: TaskOrEvent): number {
  *      TaskOrEvent aus lib/todo-types.ts.
  */
 export function useTasksAndEvents(): UseTasksAndEventsResult {
-  const [raw] = useState<TaskOrEvent[]>(() => generateTasksAndEvents());
+  const [mock] = useState<TaskOrEvent[]>(() => generateTasksAndEvents());
+  const userTasks = useUserTasks();
 
   return useMemo(() => {
-    const items = [...raw].sort(sortChrono);
+    const items = [...mock, ...userTasks].sort(sortChrono);
     const todayStr = dayKey.format(new Date());
     const today = items.filter((it) => it.at && dayKey.format(new Date(it.at)) === todayStr);
+    // isMock bleibt true, solange die Kalender-/Termindaten Platzhalter sind —
+    // eigene User-Aufgaben sind echt, ändern aber den Anbindungsstatus nicht.
     return { items, today, isMock: true };
-  }, [raw]);
+  }, [mock, userTasks]);
 }

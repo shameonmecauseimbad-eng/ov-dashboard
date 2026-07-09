@@ -34,4 +34,6 @@ export type TaskOrEvent = {
   projectTag: ProjectTag;
   priority: Priority;
   done: boolean;
+  /** "mock" = Platzhalter-Datensatz (read-only), "user" = selbst erstellt (editierbar). */
+  source: "mock" | "user";
 };

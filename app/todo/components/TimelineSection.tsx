@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import CombinedTimeline from "@/app/todo/components/CombinedTimeline";
 import ProjectFilter, { type FilterValue } from "@/app/todo/components/ProjectFilter";
 import WidgetCard from "@/components/WidgetCard";
+import { removeUserTask, toggleUserTask } from "@/lib/todo-store";
 import { useTasksAndEvents } from "@/lib/useTasksAndEvents";
 
 /**
@@ -25,7 +26,7 @@ export default function TimelineSection() {
       <div className="mb-5">
         <ProjectFilter value={filter} onChange={setFilter} />
       </div>
-      <CombinedTimeline items={filtered} />
+      <CombinedTimeline items={filtered} onToggle={toggleUserTask} onRemove={removeUserTask} />
       <p className="mt-5 border-t border-line pt-4 text-xs text-muted">
         Termine (durchgezogener Rahmen) + To-Dos (gestrichelt) · Quelle:{" "}
         {isMock ? "Platzhalter-Daten" : <span className="font-mono">dashboard.todo_items</span>}

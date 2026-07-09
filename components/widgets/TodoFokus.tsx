@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo } from "react";
 import WidgetCard from "@/components/WidgetCard";
 import { PROJECT_TAG_LABEL, PRIORITY_STYLE, type Priority } from "@/lib/todo-types";
@@ -51,10 +52,17 @@ export default function TodoFokus() {
           })}
         </ul>
       )}
-      <p className="mt-5 border-t border-line pt-4 text-xs text-muted">
-        {done}/{total} erledigt · {openCount} offen heute · Quelle:{" "}
-        {isMock ? "Platzhalter-Daten" : <span className="font-mono">dashboard.todo_items</span>}
-      </p>
+      <div className="mt-5 flex items-center justify-between gap-3 border-t border-line pt-4">
+        <p className="text-xs text-muted">
+          {done}/{total} erledigt · {openCount} offen heute
+        </p>
+        <Link
+          href="/todo#neu"
+          className="shrink-0 rounded-lg border border-white/40 bg-white/10 px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-white/15"
+        >
+          + Aufgabe erstellen
+        </Link>
+      </div>
     </WidgetCard>
   );
 }

@@ -16,7 +16,12 @@ function at(dayOffset: number, hour: number, minute = 0): string {
   return date.toISOString();
 }
 
-type Seed = Omit<TaskOrEvent, "id" | "at"> & { dayOffset: number; hour: number; minute?: number; noTime?: boolean };
+type Seed = Omit<TaskOrEvent, "id" | "at" | "source"> & {
+  dayOffset: number;
+  hour: number;
+  minute?: number;
+  noTime?: boolean;
+};
 
 // Fester, handkuratierter Datensatz — deckt alle UI-Zustände ab: Termine vs.
 // To-Dos, alle drei Prioritäten, alle vier Projekt-Tags, erledigt/offen,
@@ -58,5 +63,6 @@ export function generateTasksAndEvents(): TaskOrEvent[] {
     projectTag: s.projectTag as ProjectTag,
     priority: s.priority as Priority,
     done: s.done,
+    source: "mock",
   }));
 }

@@ -1,4 +1,5 @@
 import FocusToday from "@/app/todo/components/FocusToday";
+import TaskCreator from "@/app/todo/components/TaskCreator";
 import TimelineSection from "@/app/todo/components/TimelineSection";
 import PageHeader from "@/components/PageHeader";
 import Widget from "@/components/Widget";
@@ -20,7 +21,13 @@ export default function TodoPage() {
           <Widget title="Fokus heute" index={0}>
             <FocusToday />
           </Widget>
-          <Widget title="Zeitleiste" index={1}>
+          {/* Anker #neu: das Overview-Widget verlinkt hierher (/todo#neu). */}
+          <div id="neu" className="scroll-mt-24">
+            <Widget title="Neue Aufgabe" index={1} skeleton="stats">
+              <TaskCreator />
+            </Widget>
+          </div>
+          <Widget title="Zeitleiste" index={2}>
             <TimelineSection />
           </Widget>
         </div>
