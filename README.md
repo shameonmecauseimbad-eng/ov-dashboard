@@ -12,7 +12,8 @@ Dark Mode als einzige Option, ein Widget pro Datenquelle, Frontend strikt **read
 | Social Media | Supabase-Tabelle `social_stats` | live, sobald Tabelle existiert |
 | Social Media Detail (`/social`) | `social_stats_daily` + `social_posts` | Mock-Daten, bis Hermes befüllt (s. unten) |
 | Krypto-Kurse | CoinGecko public API (kein Key) | live, 60-s-Refresh im Browser |
-| RedzoneEarth Ads | Ad-Provider-API | Platzhalter („Noch nicht live“) |
+| RedzoneEarth Ads (Overview) | Ad-Provider-API | Platzhalter („Noch nicht live“) |
+| RedzoneEarth Detail (`/redzone`) | Hook `useRedzoneStats()` → `redzone_stats` | Mock-Daten, bis Ad-Provider anbindet (s. unten) |
 
 ## Setup
 
@@ -116,11 +117,26 @@ create table if not exists dashboard.social_posts (
   updated_at timestamptz not null default now()
 );
 
+-- 3c) RedzoneEarth-Werbeerlöse (/redzone): Zeitreihe (eine Zeile pro Tag) plus
+-- eine Zeile je Platzierung/Slot. Wird vom Ad-Provider-Sync befüllt.
+create table if not exists dashboard.redzone_stats (
+  date date not null,
+  revenue numeric not null default 0,
+  impressions int not null default 0,
+  fill_rate numeric not null default 0,
+  visitors int not null default 0,
+  slot_id text not null default 'gesamt',
+  slot_name text not null default 'Gesamt',
+  updated_at timestamptz not null default now(),
+  primary key (date, slot_id)
+);
+
 -- 4) RLS + Lese-Policies (idempotent)
 alter table dashboard.ddd_stats enable row level security;
 alter table dashboard.social_stats enable row level security;
 alter table dashboard.social_stats_daily enable row level security;
 alter table dashboard.social_posts enable row level security;
+alter table dashboard.redzone_stats enable row level security;
 alter table dashboard.morning_briefing enable row level security;
 
 drop policy if exists "anon liest ddd_stats" on dashboard.ddd_stats;
@@ -137,6 +153,10 @@ create policy "anon liest social_stats_daily" on dashboard.social_stats_daily
 
 drop policy if exists "anon liest social_posts" on dashboard.social_posts;
 create policy "anon liest social_posts" on dashboard.social_posts
+  for select to anon, authenticated using (true);
+
+drop policy if exists "anon liest redzone_stats" on dashboard.redzone_stats;
+create policy "anon liest redzone_stats" on dashboard.redzone_stats
   for select to anon, authenticated using (true);
 
 drop policy if exists "anon liest morning_briefing" on dashboard.morning_briefing;
@@ -199,6 +219,27 @@ Hydration-Mismatch) — Typen in `lib/social-types.ts`.
 auf einen Route Handler (z. B. `app/api/social-stats/route.ts`, der
 serverseitig `getSupabase()` nutzt) tauschen. Die sechs Widget-Komponenten
 bleiben unverändert — sie kennen nur den `SocialStats`-Typ.
+
+## RedzoneEarth-Detailseite (`/redzone`)
+
+Sechs Bausteine unter `app/redzone/components/` (Status-Karte, Revenue-Trend-
+Chart mit 7/30/90-Toggle, Fill-Rate/Impressions-Monitor, Top-Slots-Ranking,
+Revenue per Visitor, Projektvergleich RedzoneEarth vs. DDD), gespeist über den
+zentralen Hook `useRedzoneStats()` (`lib/useRedzoneStats.ts`). Typen in
+`lib/redzone-types.ts`, Mock-Generator in `lib/redzone-mock.ts` (fixer Seed,
+kein Hydration-Mismatch).
+
+Der Ad-Provider ist noch nicht angebunden — alle Kennzahlen laufen auf klar
+gekennzeichneten Mock-Daten (Badge „Mock-Daten", Status-Karte „Noch nicht
+live"). Der **Projektvergleich** zieht den DDD-Umsatz bereits live aus
+`dashboard.ddd_stats` (falls Schema freigeschaltet), RedzoneEarth bleibt Mock.
+
+**Umstellung auf Live-Daten:** Sobald `dashboard.redzone_stats` vom Ad-Provider-
+Sync befüllt ist, in `lib/useRedzoneStats.ts` den `generateRedzoneStats()`-
+Aufruf gegen einen Fetch auf einen Route Handler (z. B. `app/api/redzone-stats/
+route.ts`, serverseitig `getSupabase()`) tauschen und `isMock: false` setzen.
+Die Widget-Komponenten bleiben unverändert — sie kennen nur den
+`RedzoneStats`-Typ.
 
 ## To-Do-Bereich (`/todo`)
 
