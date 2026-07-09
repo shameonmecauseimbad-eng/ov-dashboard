@@ -35,6 +35,10 @@ const NAV: NavItem[] = [
 export default function Sidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  // Eingeklappte Gruppen (per Gruppen-Name). Standard: alle ausgeklappt.
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const toggleGroup = (name: string) =>
+    setCollapsed((c) => ({ ...c, [name]: !c[name] }));
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -105,32 +109,54 @@ export default function Sidebar() {
           <ul className="space-y-0.5">
             {NAV.map((item) => {
               if (isGroup(item)) {
+                const isCollapsed = collapsed[item.group] ?? false;
                 return (
                   <li key={item.group} className="pt-3 first:pt-0">
-                    <p className="px-4 pb-1 text-[11px] font-medium uppercase tracking-[0.16em] text-muted/70">
+                    <button
+                      type="button"
+                      onClick={() => toggleGroup(item.group)}
+                      aria-expanded={!isCollapsed}
+                      className="group/grp flex w-full items-center gap-1.5 px-4 pb-1 text-[11px] font-medium uppercase tracking-[0.16em] text-muted/70 transition-colors hover:text-foreground"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                        className={`h-3 w-3 transition-transform duration-200 motion-reduce:transition-none ${
+                          isCollapsed ? "-rotate-90" : ""
+                        }`}
+                      >
+                        <path d="M6 9 L12 15 L18 9" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
                       {item.group}
-                    </p>
-                    <ul className="space-y-0.5">
-                      {item.children.map((child) => {
-                        const active = pathname === child.href;
-                        return (
-                          <li key={child.href}>
-                            <Link
-                              href={child.href}
-                              onClick={() => setOpen(false)}
-                              aria-current={active ? "page" : undefined}
-                              className={`flex border-l-2 px-4 py-2.5 pl-6 text-sm transition-colors ${
-                                active
-                                  ? "border-accent bg-white/[0.04] font-medium text-foreground"
-                                  : "border-transparent text-muted hover:bg-white/5 hover:text-foreground"
-                              }`}
-                            >
-                              {child.label}
-                            </Link>
-                          </li>
-                        );
-                      })}
-                    </ul>
+                    </button>
+                    <div
+                      className={`grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none ${
+                        isCollapsed ? "grid-rows-[0fr]" : "grid-rows-[1fr]"
+                      }`}
+                    >
+                      <ul className="space-y-0.5 overflow-hidden">
+                        {item.children.map((child) => {
+                          const active = pathname === child.href;
+                          return (
+                            <li key={child.href}>
+                              <Link
+                                href={child.href}
+                                onClick={() => setOpen(false)}
+                                aria-current={active ? "page" : undefined}
+                                tabIndex={isCollapsed ? -1 : undefined}
+                                className={`flex border-l-2 px-4 py-2.5 pl-6 text-sm transition-colors ${
+                                  active
+                                    ? "border-accent bg-white/[0.04] font-medium text-foreground"
+                                    : "border-transparent text-muted hover:bg-white/5 hover:text-foreground"
+                                }`}
+                              >
+                                {child.label}
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
                   </li>
                 );
               }
