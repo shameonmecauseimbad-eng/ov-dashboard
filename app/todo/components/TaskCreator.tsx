@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import QuickAdd from "@/app/todo/components/QuickAdd";
 import WidgetCard from "@/components/WidgetCard";
 import { addUserTask } from "@/lib/todo-store";
 import {
@@ -31,6 +32,7 @@ const PRIORITY_LABEL: Record<Priority, string> = { high: "Hoch", medium: "Mittel
  */
 export default function TaskCreator() {
   const titleRef = useRef<HTMLInputElement>(null);
+  const [mode, setMode] = useState<"form" | "quick">("form");
   const [title, setTitle] = useState("");
   const [type, setType] = useState<ItemType>("task");
   const [priority, setPriority] = useState<Priority>("medium");
@@ -73,6 +75,34 @@ export default function TaskCreator() {
 
   return (
     <WidgetCard title="Neue Aufgabe" badge="Lokal" badgeTone="neutral">
+      {/* Modus-Umschalter: strukturiertes Formular ⇄ Schnell-Eingabe (Quick-Work) */}
+      <div className="mb-5 inline-flex rounded-lg border border-line p-0.5" role="tablist" aria-label="Eingabemodus">
+        {([["form", "Formular"], ["quick", "Schnell"]] as const).map(([m, label]) => (
+          <button
+            key={m}
+            type="button"
+            role="tab"
+            aria-selected={mode === m}
+            onClick={() => setMode(m)}
+            className={`rounded-md px-3.5 py-1.5 text-sm transition-colors ${
+              mode === m ? "bg-white/10 font-medium text-foreground" : "text-muted hover:text-foreground"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {mode === "quick" ? (
+        <>
+          <QuickAdd autoFocus className="" />
+          <p className="mt-5 border-t border-line pt-4 text-xs text-muted">
+            Schnell-Eingabe: erkennt Datum, Uhrzeit, Projekt, Priorität, Wiederholung &amp; Dauer aus dem
+            Text — z. B. „morgen 9 Uhr DDD Bugfix wöchentlich 30 min“.
+          </p>
+        </>
+      ) : (
+        <>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="task-title" className={labelBase}>
@@ -220,9 +250,11 @@ export default function TaskCreator() {
           )}
         </div>
       </form>
-      <p className="mt-5 border-t border-line pt-4 text-xs text-muted">
-        Ohne Uhrzeit = ganztägig · Speicherung: lokal im Browser (localStorage)
-      </p>
+          <p className="mt-5 border-t border-line pt-4 text-xs text-muted">
+            Ohne Uhrzeit = ganztägig · Speicherung: lokal im Browser (localStorage)
+          </p>
+        </>
+      )}
     </WidgetCard>
   );
 }

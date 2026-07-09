@@ -33,7 +33,13 @@ function Chip({ children }: { children: React.ReactNode }) {
  * DDD Bugfix") per Keyword/Regex in Datum, Uhrzeit, Projekt-Tag und Priorität
  * und legt die Aufgabe direkt lokal an. Live-Vorschau zeigt, was erkannt wurde.
  */
-export default function QuickAdd() {
+export default function QuickAdd({
+  autoFocus = false,
+  className = "mb-5",
+}: {
+  autoFocus?: boolean;
+  className?: string;
+} = {}) {
   const [raw, setRaw] = useState("");
 
   const parsed = useMemo(() => parseQuickAdd(raw), [raw]);
@@ -59,7 +65,7 @@ export default function QuickAdd() {
   const showPreview = raw.trim().length > 0;
 
   return (
-    <form onSubmit={submit} className="mb-5">
+    <form onSubmit={submit} className={className}>
       <div className="flex items-center gap-2">
         <span className="shrink-0 text-muted" aria-hidden="true">
           <svg viewBox="0 0 24 24" className="h-4 w-4">
@@ -67,6 +73,8 @@ export default function QuickAdd() {
           </svg>
         </span>
         <input
+          // eslint-disable-next-line jsx-a11y/no-autofocus
+          autoFocus={autoFocus}
           value={raw}
           onChange={(e) => setRaw(e.target.value)}
           placeholder="Schnell hinzufügen — z. B. „morgen 9 Uhr DDD Bugfix“"

@@ -51,10 +51,17 @@ function DoneToggle({ done, onClick }: { done: boolean; onClick: () => void }) {
   return (
     <button
       type="button"
-      onClick={onClick}
+      // mousedown der Zeile (Shift-Auswahl/Cursor) nicht dazwischenfunken lassen —
+      // sonst geht der erste Klick gelegentlich verloren.
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
       aria-label={done ? "Als offen markieren" : "Als erledigt markieren"}
       aria-pressed={done}
-      className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-white/30 text-foreground transition-colors hover:border-white/60"
+      // relative + before:-inset-2 = unsichtbar vergrößerte Trefferfläche (~32 px).
+      className="relative flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-white/30 text-foreground transition-all duration-150 before:absolute before:-inset-2 before:content-[''] hover:border-white/60 active:scale-90"
     >
       {done && (
         <svg viewBox="0 0 12 12" className="h-2.5 w-2.5" aria-hidden="true">
@@ -112,16 +119,20 @@ export default function TaskRow({ item }: { item: TaskOrEvent }) {
         {isUser && (
           <button
             type="button"
+            title={picked ? "Auswahl aufheben" : "Für Sammelaktion auswählen"}
+            onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
               toggleSelect(item.id);
             }}
-            aria-label={picked ? "Auswahl aufheben" : "Auswählen"}
+            aria-label={picked ? "Auswahl aufheben" : "Für Sammelaktion auswählen"}
             aria-pressed={picked}
-            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] border transition-all ${
+            // relative + before:-inset-2 = unsichtbar vergrößerte Trefferfläche.
+            // Dauerhaft (dezent) sichtbar → zuverlässig beim ersten Klick.
+            className={`relative flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] border transition-all duration-150 before:absolute before:-inset-2 before:content-[''] active:scale-90 ${
               picked
                 ? "border-white/70 bg-white/20 opacity-100"
-                : `border-white/30 opacity-0 group-hover/row:opacity-100 ${selectionActive ? "opacity-100" : ""}`
+                : `border-white/30 opacity-50 hover:opacity-100 group-hover/row:opacity-100 ${selectionActive ? "opacity-100" : ""}`
             }`}
           >
             {picked && (

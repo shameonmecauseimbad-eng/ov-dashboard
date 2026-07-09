@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import CombinedTimeline from "@/app/todo/components/CombinedTimeline";
 import ProjectFilter, { type FilterValue } from "@/app/todo/components/ProjectFilter";
-import QuickAdd from "@/app/todo/components/QuickAdd";
 import { useTodo } from "@/app/todo/components/TodoContext";
 import WidgetCard from "@/components/WidgetCard";
 import { useTasksAndEvents } from "@/lib/useTasksAndEvents";
@@ -31,7 +30,6 @@ export default function TimelineSection() {
 
   return (
     <WidgetCard title="Quick-Work" badge="Lokal" badgeTone="neutral">
-      <QuickAdd />
       <div className="mb-5">
         <ProjectFilter value={filter} onChange={setFilter} />
       </div>
