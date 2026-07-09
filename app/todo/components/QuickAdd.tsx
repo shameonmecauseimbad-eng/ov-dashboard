@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { addUserTask } from "@/lib/todo-store";
 import { parseQuickAdd } from "@/lib/todo-nlp";
-import { PRIORITY_STYLE, PROJECT_TAG_LABEL } from "@/lib/todo-types";
+import { PRIORITY_STYLE, PROJECT_TAG_LABEL, RECURRENCE_LABEL } from "@/lib/todo-types";
 
 const TZ = "Europe/Vienna";
 const dayKey = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" });
@@ -50,6 +50,8 @@ export default function QuickAdd() {
       projectTag: parsed.projectTag,
       date: parsed.date ?? dayKey.format(now),
       time: parsed.time,
+      recurrence: parsed.recurrence,
+      estimatedMinutes: parsed.estimatedMinutes,
     });
     setRaw("");
   }
@@ -87,6 +89,12 @@ export default function QuickAdd() {
           {parsed.matched.time ? <Chip>{parsed.time} Uhr</Chip> : <Chip>ganztägig</Chip>}
           {parsed.matched.project && <Chip>{PROJECT_TAG_LABEL[parsed.projectTag]}</Chip>}
           {parsed.matched.priority && <Chip>Priorität {PRIORITY_STYLE[parsed.priority].label}</Chip>}
+          {parsed.matched.recurrence && parsed.recurrence && <Chip>{RECURRENCE_LABEL[parsed.recurrence.freq]}</Chip>}
+          {parsed.matched.estimate && parsed.estimatedMinutes != null && (
+            <Chip>
+              ~{parsed.estimatedMinutes >= 60 ? `${(parsed.estimatedMinutes / 60).toLocaleString("de-AT", { maximumFractionDigits: 1 })} h` : `${parsed.estimatedMinutes} min`}
+            </Chip>
+          )}
           <span className="text-[11px] text-muted">
             → „<span className="text-foreground">{parsed.title || raw.trim()}</span>“
           </span>

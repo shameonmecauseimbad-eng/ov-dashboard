@@ -1,4 +1,4 @@
-import { PROJECT_TAGS, type Priority, type ProjectTag } from "@/lib/todo-types";
+import { PROJECT_TAGS, type Priority, type ProjectTag, type Recurrence } from "@/lib/todo-types";
 
 /**
  * Leichtgewichtiges Natural-Language-Parsing für das Quick-Add-Feld der
@@ -20,8 +20,10 @@ export type QuickAddParse = {
   time: string | null;
   projectTag: ProjectTag;
   priority: Priority;
+  recurrence: Recurrence | null;
+  estimatedMinutes: number | null;
   /** Was tatsächlich erkannt wurde — für die Live-Vorschau im UI. */
-  matched: { date: boolean; time: boolean; project: boolean; priority: boolean };
+  matched: { date: boolean; time: boolean; project: boolean; priority: boolean; recurrence: boolean; estimate: boolean };
 };
 
 // Projekt-Tag → erkennbare Schlüsselwörter (Reihenfolge: längere zuerst matchen).
@@ -48,11 +50,13 @@ function escapeRe(s: string): string {
 
 export function parseQuickAdd(input: string, now: Date = new Date()): QuickAddParse {
   let rest = ` ${input} `;
-  const matched = { date: false, time: false, project: false, priority: false };
+  const matched = { date: false, time: false, project: false, priority: false, recurrence: false, estimate: false };
   let date: string | null = null;
   let time: string | null = null;
   let projectTag: ProjectTag = "sonstiges";
   let priority: Priority = "medium";
+  let recurrence: Recurrence | null = null;
+  let estimatedMinutes: number | null = null;
 
   const cut = (re: RegExp) => {
     rest = rest.replace(re, " ");
@@ -67,6 +71,26 @@ export function parseQuickAdd(input: string, now: Date = new Date()): QuickAddPa
     priority = "low";
     matched.priority = true;
     cut(/(^|\s)(niedrig|unwichtig)(?=\s|$)/gi);
+  }
+
+  // ─── Wiederholung (Feature 2) ────────────────────────────────────────────────
+  if (/(^|\s)(täglich|taeglich|jeden\s+tag)(\s|$)/i.test(rest)) {
+    recurrence = { freq: "daily", interval: 1 }; matched.recurrence = true;
+    cut(/(^|\s)(täglich|taeglich|jeden\s+tag)(?=\s|$)/i);
+  } else if (/(^|\s)(wöchentlich|woechentlich|jede\s+woche)(\s|$)/i.test(rest)) {
+    recurrence = { freq: "weekly", interval: 1 }; matched.recurrence = true;
+    cut(/(^|\s)(wöchentlich|woechentlich|jede\s+woche)(?=\s|$)/i);
+  }
+
+  // ─── Dauer-Schätzung (Feature 5): „30 min", „2 std", „1,5 stunden" ────────────
+  const durH = rest.match(/(^|\s)(\d+(?:[.,]\d+)?)\s*(?:std|stunden|stunde)(\s|$)/i);
+  const durM = rest.match(/(^|\s)(\d+)\s*(?:min|minuten|minute)(\s|$)/i);
+  if (durH) {
+    estimatedMinutes = Math.round(parseFloat(durH[2].replace(",", ".")) * 60); matched.estimate = true;
+    cut(/(^|\s)\d+(?:[.,]\d+)?\s*(?:std|stunden|stunde)(?=\s|$)/i);
+  } else if (durM) {
+    estimatedMinutes = Number(durM[2]); matched.estimate = true;
+    cut(/(^|\s)\d+\s*(?:min|minuten|minute)(?=\s|$)/i);
   }
 
   // ─── Projekt-Tag ─────────────────────────────────────────────────────────────
@@ -139,5 +163,5 @@ export function parseQuickAdd(input: string, now: Date = new Date()): QuickAddPa
   }
 
   const title = rest.replace(/\s+/g, " ").trim();
-  return { title, date, time, projectTag, priority, matched };
+  return { title, date, time, projectTag, priority, recurrence, estimatedMinutes, matched };
 }

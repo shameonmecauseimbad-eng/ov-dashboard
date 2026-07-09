@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import type { ItemType, Priority, ProjectTag, TaskOrEvent } from "@/lib/todo-types";
+import type { ItemType, Priority, ProjectTag, Recurrence, Subtask, TaskOrEvent } from "@/lib/todo-types";
 
 /**
  * Client-Store für selbst erstellte Aufgaben (localStorage). Bewusst getrennt
@@ -74,14 +74,21 @@ export type NewTaskInput = {
   date: string;
   /** HH:MM oder null (= ganztägig / ohne Uhrzeit). */
   time: string | null;
+  recurrence?: Recurrence | null;
+  estimatedMinutes?: number | null;
+  subtasks?: Subtask[];
 };
+
+function newId(): string {
+  return `user-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+}
 
 export function addUserTask(input: NewTaskInput): void {
   if (!loaded) load();
   const hasTime = Boolean(input.time);
   const at = new Date(`${input.date}T${input.time ?? "00:00"}`).toISOString();
   const task: TaskOrEvent = {
-    id: `user-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    id: newId(),
     title: input.title.trim(),
     type: input.type,
     at,
@@ -90,17 +97,116 @@ export function addUserTask(input: NewTaskInput): void {
     priority: input.priority,
     done: false,
     source: "user",
+    recurrence: input.recurrence ?? null,
+    estimatedMinutes: input.estimatedMinutes ?? null,
+    subtasks: input.subtasks ?? [],
   };
   cache = [task, ...cache];
   persist();
   emit();
 }
 
+/** Verschiebt einen ISO-Zeitstempel um interval Tage/Wochen (Uhrzeit bleibt). */
+function advance(iso: string, rec: Recurrence): string {
+  const d = new Date(iso);
+  const days = rec.freq === "weekly" ? 7 * rec.interval : rec.interval;
+  d.setDate(d.getDate() + days);
+  return d.toISOString();
+}
+
 export function toggleUserTask(id: string): void {
   if (!loaded) load();
+  const target = cache.find((t) => t.id === id);
+  const willBeDone = target ? !target.done : false;
+
   cache = cache.map((t) => (t.id === id ? { ...t, done: !t.done } : t));
+
+  // Wiederkehrende Aufgabe erledigt → nächste Instanz einplanen (eigene
+  // Wiederholungslogik; MCP-Spiegelung der iOS-Regel folgt an der bekannten Naht).
+  if (target && willBeDone && target.recurrence && target.at) {
+    const next: TaskOrEvent = {
+      ...target,
+      id: newId(),
+      at: advance(target.at, target.recurrence),
+      done: false,
+      // Subtasks für die neue Instanz zurücksetzen.
+      subtasks: (target.subtasks ?? []).map((s) => ({ ...s, done: false })),
+    };
+    cache = [next, ...cache];
+  }
   persist();
   emit();
+}
+
+/** Generisches Patch für eine eigene Aufgabe (Snooze, Priorität, Dauer, Subtasks …). */
+export function updateUserTask(id: string, patch: Partial<TaskOrEvent>): void {
+  if (!loaded) load();
+  cache = cache.map((t) => (t.id === id ? { ...t, ...patch } : t));
+  persist();
+  emit();
+}
+
+/** Aufgabe auf ein neues Datum/Uhrzeit verschieben (YYYY-MM-DD, HH:MM|null). */
+export function rescheduleUserTask(id: string, date: string, time: string | null): void {
+  const at = new Date(`${date}T${time ?? "00:00"}`).toISOString();
+  updateUserTask(id, { at, allDay: !time });
+}
+
+// ─── Subtasks ─────────────────────────────────────────────────────────────────
+
+export function addSubtask(taskId: string, title: string): void {
+  if (!loaded) load();
+  const clean = title.trim();
+  if (!clean) return;
+  cache = cache.map((t) =>
+    t.id === taskId
+      ? { ...t, subtasks: [...(t.subtasks ?? []), { id: newId(), title: clean, done: false }] }
+      : t
+  );
+  persist();
+  emit();
+}
+
+export function toggleSubtask(taskId: string, subId: string): void {
+  if (!loaded) load();
+  cache = cache.map((t) =>
+    t.id === taskId
+      ? { ...t, subtasks: (t.subtasks ?? []).map((s) => (s.id === subId ? { ...s, done: !s.done } : s)) }
+      : t
+  );
+  persist();
+  emit();
+}
+
+export function removeSubtask(taskId: string, subId: string): void {
+  if (!loaded) load();
+  cache = cache.map((t) =>
+    t.id === taskId ? { ...t, subtasks: (t.subtasks ?? []).filter((s) => s.id !== subId) } : t
+  );
+  persist();
+  emit();
+}
+
+// ─── Bulk-Aktionen (Feature 10) ────────────────────────────────────────────────
+
+export function bulkComplete(ids: string[]): void {
+  for (const id of ids) {
+    const t = cache.find((x) => x.id === id);
+    if (t && !t.done) toggleUserTask(id); // nutzt Recurrence-Logik
+  }
+}
+
+export function bulkUpdate(ids: string[], patch: Partial<TaskOrEvent>): void {
+  if (!loaded) load();
+  const set = new Set(ids);
+  cache = cache.map((t) => (set.has(t.id) ? { ...t, ...patch } : t));
+  persist();
+  emit();
+}
+
+export function bulkReschedule(ids: string[], date: string, time: string | null): void {
+  const at = new Date(`${date}T${time ?? "00:00"}`).toISOString();
+  bulkUpdate(ids, { at, allDay: !time });
 }
 
 export function removeUserTask(id: string): void {

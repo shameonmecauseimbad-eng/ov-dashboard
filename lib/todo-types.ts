@@ -18,10 +18,25 @@ export const PRIORITY_STYLE: Record<Priority, { weight: string; opacity: string;
   low: { weight: "font-normal", opacity: "opacity-45", label: "Niedrig" },
 };
 
+/** Wiederholungs-Rhythmus einer Aufgabe. interval = alle N Einheiten. */
+export type RecurrenceFreq = "daily" | "weekly";
+export type Recurrence = { freq: RecurrenceFreq; interval: number };
+
+export const RECURRENCE_LABEL: Record<RecurrenceFreq, string> = {
+  daily: "täglich",
+  weekly: "wöchentlich",
+};
+
+/** Ein Checklisten-Unterpunkt einer Aufgabe. */
+export type Subtask = { id: string; title: string; done: boolean };
+
 /**
  * Einheitliches, normalisiertes Interface für Termine UND Erinnerungen —
  * die gemeinsame Zeitleiste kennt nur diesen Typ. Termine (type: "event")
  * kommen aus dem Kalender, To-Dos (type: "task") aus den Erinnerungen.
+ *
+ * Die Felder recurrence/subtasks/estimatedMinutes sind optional — Altdaten
+ * ohne diese Felder (und der bestehende useTasksAndEvents-Vertrag) bleiben gültig.
  */
 export type TaskOrEvent = {
   id: string;
@@ -36,4 +51,10 @@ export type TaskOrEvent = {
   done: boolean;
   /** "mock" = Platzhalter-Datensatz (read-only), "user" = selbst erstellt (editierbar). */
   source: "mock" | "user";
+  /** Wiederholungsregel — beim Erledigen wird die nächste Instanz erzeugt. null/undefined = einmalig. */
+  recurrence?: Recurrence | null;
+  /** Checklisten-Unterpunkte. undefined/[] = keine. */
+  subtasks?: Subtask[];
+  /** Geschätzte Dauer in Minuten (Zeitblock-Planung). null/undefined = keine Schätzung. */
+  estimatedMinutes?: number | null;
 };

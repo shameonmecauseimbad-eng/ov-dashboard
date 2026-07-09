@@ -25,7 +25,7 @@ export default function FocusToday() {
   const { today } = useTasksAndEvents();
   const [expanded, setExpanded] = useState(false);
 
-  const { focus, rest, done, total } = useMemo(() => {
+  const { focus, rest, done, total, plannedMinutes } = useMemo(() => {
     const open = today.filter((it) => !it.done);
     const byImportance = [...open].sort((a, b) => {
       const p = PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
@@ -36,13 +36,26 @@ export default function FocusToday() {
       rest: byImportance.slice(FOCUS_COUNT),
       done: today.filter((it) => it.done).length,
       total: today.length,
+      // Summe der geschätzten Dauer aller OFFENEN Punkte heute (Feature 5).
+      plannedMinutes: open.reduce((sum, it) => sum + (it.estimatedMinutes ?? 0), 0),
     };
   }, [today]);
+
+  const plannedLabel =
+    plannedMinutes >= 60
+      ? `${(plannedMinutes / 60).toLocaleString("de-AT", { maximumFractionDigits: 1 })} Std.`
+      : `${plannedMinutes} Min.`;
 
   return (
     <WidgetCard title="Fokus heute" badge="Lokal" badgeTone="neutral">
       <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:gap-8">
         <div className="min-w-0 flex-1">
+          {plannedMinutes > 0 && (
+            <p className="mb-3 text-xs text-muted">
+              <span className="font-mono tabular-nums text-foreground">{plannedLabel}</span> geplant
+              <span className="opacity-60"> · offene Punkte mit Schätzung</span>
+            </p>
+          )}
           {focus.length === 0 ? (
             <p className="text-sm text-muted">
               {total === 0

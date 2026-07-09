@@ -6,9 +6,11 @@ import { addUserTask } from "@/lib/todo-store";
 import {
   PROJECT_TAGS,
   PROJECT_TAG_LABEL,
+  RECURRENCE_LABEL,
   type ItemType,
   type Priority,
   type ProjectTag,
+  type RecurrenceFreq,
 } from "@/lib/todo-types";
 
 const TZ = "Europe/Vienna";
@@ -35,6 +37,8 @@ export default function TaskCreator() {
   const [projectTag, setProjectTag] = useState<ProjectTag>("sonstiges");
   const [date, setDate] = useState(() => dayKey.format(new Date()));
   const [time, setTime] = useState("");
+  const [recurrence, setRecurrence] = useState<"none" | RecurrenceFreq>("none");
+  const [duration, setDuration] = useState("");
   const [justAdded, setJustAdded] = useState<string | null>(null);
 
   // Von „+ Aufgabe erstellen" (…/todo#neu) kommend: Titel fokussieren.
@@ -48,10 +52,21 @@ export default function TaskCreator() {
     e.preventDefault();
     const trimmed = title.trim();
     if (!trimmed) return;
-    addUserTask({ title: trimmed, type, priority, projectTag, date, time: time || null });
+    const mins = Number(duration.replace(",", "."));
+    addUserTask({
+      title: trimmed,
+      type,
+      priority,
+      projectTag,
+      date,
+      time: time || null,
+      recurrence: recurrence === "none" ? null : { freq: recurrence, interval: 1 },
+      estimatedMinutes: Number.isFinite(mins) && mins > 0 ? Math.round(mins) : null,
+    });
     setJustAdded(trimmed);
     setTitle("");
     setTime("");
+    setDuration("");
     titleRef.current?.focus();
     window.setTimeout(() => setJustAdded(null), 2500);
   }
@@ -158,6 +173,36 @@ export default function TaskCreator() {
                 className={`${inputBase} [color-scheme:dark]`}
               />
             </div>
+          </div>
+
+          <div>
+            <label htmlFor="task-recurrence" className={labelBase}>
+              Wiederholung
+            </label>
+            <select
+              id="task-recurrence"
+              value={recurrence}
+              onChange={(e) => setRecurrence(e.target.value as "none" | RecurrenceFreq)}
+              className={inputBase}
+            >
+              <option value="none">Einmalig</option>
+              <option value="daily">{RECURRENCE_LABEL.daily}</option>
+              <option value="weekly">{RECURRENCE_LABEL.weekly}</option>
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="task-duration" className={labelBase}>
+              Geschätzte Dauer (Min.)
+            </label>
+            <input
+              id="task-duration"
+              inputMode="numeric"
+              value={duration}
+              onChange={(e) => setDuration(e.target.value)}
+              placeholder="z. B. 30"
+              className={inputBase}
+            />
           </div>
         </div>
 
