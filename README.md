@@ -6,7 +6,7 @@ Dark Mode als einzige Option, ein Widget pro Datenquelle, Frontend strikt **read
 | Widget | Datenquelle | Status |
 |---|---|---|
 | Morgen-Briefing | Supabase-Tabelle `morning_briefing` | live, sobald Tabelle existiert |
-| Kalender & Erinnerungen | Google Calendar + Tasks API (read-only) | live, sobald Google-Env-Vars gesetzt |
+| Fokus heute / To-Do (`/todo`) | zentraler Hook `useTasksAndEvents()` | Platzhalter-Daten, Anbindung folgt (s. unten) |
 | DDD Übersicht | Supabase-Tabelle `ddd_stats` | live, sobald Tabelle existiert |
 | GitHub Activity | GitHub REST API (`GITHUB_REPO`) | live, sobald Repo erreichbar |
 | Social Media | Supabase-Tabelle `social_stats` | live, sobald Tabelle existiert |
@@ -30,30 +30,16 @@ npm run dev                  # http://localhost:3000
 | `SUPABASE_ANON_KEY` | Lesezugriff (RLS), Legacy-Format `eyJ...` | ja |
 | `GITHUB_REPO` | Repo fürs GitHub-Widget, Format `owner/repo` | ja |
 | `GITHUB_TOKEN` | optional: private Repos / höheres Rate-Limit | ja (empfohlen) |
-| `GOOGLE_CLIENT_ID` | OAuth2-Client fürs Kalender-Widget | nur wenn gewollt¹ |
-| `GOOGLE_CLIENT_SECRET` | OAuth2-Client-Secret (GCP-Console) | nur wenn gewollt¹ |
-| `GOOGLE_REFRESH_TOKEN` | Refresh-Token (Scopes: calendar.readonly, tasks.readonly) | nur wenn gewollt¹ |
 | `SUPABASE_SERVICE_ROLE_KEY` | **nur** für die `scripts/sync-*.js` (Hermes) | **NEIN — niemals!** |
-
-¹ Google-Zugangsdaten auf Vercel bedeuten: private Termine und Tasks sind ohne
-Auth-Layer über die Deploy-URL einsehbar. Ohne diese Vars zeigt das Widget
-einfach einen Hinweis — bewusste Entscheidung.
-
-**Google-Refresh-Token erzeugen (einmalig):** In der GCP-Console ein Projekt
-mit aktivierter **Calendar API** und **Tasks API** anlegen und einen
-OAuth-Client (Typ „Desktop-App“) erstellen. Client-ID und Secret in
-`.env.local` eintragen, dann:
-
-```bash
-node scripts/get-google-refresh-token.js
-```
-
-Das Script gibt einen Auth-Link aus, fängt die Google-Rückleitung lokal ab
-(Port 53682) und druckt den fertigen `GOOGLE_REFRESH_TOKEN` für `.env.local`
-in die Konsole. Scopes: `calendar.readonly` + `tasks.readonly` (read-only).
 
 Alle Variablen sind bewusst ohne `NEXT_PUBLIC_`-Präfix: sie bleiben serverseitig
 und landen nie im Browser-Bundle. `.env.local` ist git-ignoriert.
+
+> **Hinweis Kalender/To-Do:** Der frühere Google-Calendar/Tasks-OAuth-Ansatz
+> (403 `access_denied`) wurde entfernt. Der neue `/todo`-Bereich läuft über den
+> zentralen Hook `useTasksAndEvents()` mit Platzhalter-Daten — die echte
+> Anbindung folgt (s. Abschnitt „To-Do-Bereich" unten). Die `GOOGLE_*`-Env-Vars
+> werden nicht mehr benötigt.
 
 ### Supabase-Migration: Schema „dashboard“
 
@@ -213,6 +199,29 @@ Hydration-Mismatch) — Typen in `lib/social-types.ts`.
 auf einen Route Handler (z. B. `app/api/social-stats/route.ts`, der
 serverseitig `getSupabase()` nutzt) tauschen. Die sechs Widget-Komponenten
 bleiben unverändert — sie kennen nur den `SocialStats`-Typ.
+
+## To-Do-Bereich (`/todo`)
+
+Ersetzt den früheren `/kalender`. Fünf Bausteine unter `app/todo/components/`
+(Fokus heute, Yin-Yang-Fortschrittsring, Kombi-Zeitleiste, Prioritäts-Badges,
+Projekt-Filter), alle gespeist über den zentralen Hook `useTasksAndEvents()`
+(`lib/useTasksAndEvents.ts`). Der Hook führt Termine und Erinnerungen zu einem
+normalisierten `TaskOrEvent[]` zusammen (Typen in `lib/todo-types.ts`).
+
+Aktuell liefert er deterministische Platzhalter-Daten (`lib/todo-mock.ts`,
+fester Datensatz, kein Hydration-Mismatch).
+
+**Warum keine direkte MCP-Anbindung?** Die iOS-/Google-Kalender-MCP-Verbindung
+lebt im Claude-Client (Agent-Seite), **nicht** im Vercel-Runtime der App — die
+deployte App kann MCP-Tools nicht aufrufen. Der Weg zu Live-Daten führt daher
+wie bei allen anderen Widgets über Supabase:
+
+1. Tabelle `dashboard.todo_items` anlegen (Migration analog `social_stats`).
+2. Agent/Hermes synct Kalender + Erinnerungen per MCP → Supabase.
+3. In `lib/useTasksAndEvents.ts` `generateTasksAndEvents()` gegen einen Fetch
+   auf einen Route Handler (z. B. `app/api/todo/route.ts`, serverseitig
+   `getSupabase()`) tauschen und `isMock: false` setzen. Die Komponenten
+   bleiben unverändert — sie kennen nur den `TaskOrEvent`-Typ.
 
 ## Hermes-Scripts (schreiben nach Supabase, laufen lokal per Cron)
 

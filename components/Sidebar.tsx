@@ -11,7 +11,7 @@ const NAV = [
   { href: "/redzone", label: "RedzoneEarth" },
   { href: "/social", label: "Social Media" },
   { href: "/krypto", label: "Krypto" },
-  { href: "/kalender", label: "Kalender" },
+  { href: "/todo", label: "To-Do" },
   { href: "/briefing", label: "Morgen-Briefing" },
 ];
 

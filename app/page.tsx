@@ -5,11 +5,11 @@ import PageHeader from "@/components/PageHeader";
 import Widget from "@/components/Widget";
 import DddKennzahlen from "@/components/widgets/DddKennzahlen";
 import GithubActivity from "@/components/widgets/GithubActivity";
-import KalenderErinnerungen from "@/components/widgets/KalenderErinnerungen";
 import KryptoKurse from "@/components/widgets/KryptoKurse";
 import MorgenBriefing from "@/components/widgets/MorgenBriefing";
 import RedzoneEarthAds from "@/components/widgets/RedzoneEarthAds";
 import SocialMedia from "@/components/widgets/SocialMedia";
+import TodoFokus from "@/components/widgets/TodoFokus";
 
 // Supabase-Daten alle 60 Sekunden neu laden (GitHub/Google cachen 5 Min. auf Fetch-Ebene)
 export const revalidate = 60;
@@ -37,8 +37,8 @@ export default function Home() {
           <Widget title="Morgen-Briefing" index={0} dataId="briefing" href="/briefing">
             <MorgenBriefing />
           </Widget>
-          <Widget title="Kalender & Erinnerungen" index={1} href="/kalender">
-            <KalenderErinnerungen />
+          <Widget title="Fokus heute" index={1} href="/todo">
+            <TodoFokus />
           </Widget>
           <Widget title="DDD Statistics" index={2} skeleton="stats" href="/ddd">
             <DddKennzahlen />
