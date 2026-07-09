@@ -23,8 +23,8 @@ export type RecurrenceFreq = "daily" | "weekly";
 export type Recurrence = { freq: RecurrenceFreq; interval: number };
 
 export const RECURRENCE_LABEL: Record<RecurrenceFreq, string> = {
-  daily: "täglich",
-  weekly: "wöchentlich",
+  daily: "Täglich",
+  weekly: "Wöchentlich",
 };
 
 /** Ein Checklisten-Unterpunkt einer Aufgabe. */

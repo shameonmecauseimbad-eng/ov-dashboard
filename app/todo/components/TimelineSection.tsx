@@ -30,7 +30,7 @@ export default function TimelineSection() {
   }, [filtered, registerItems]);
 
   return (
-    <WidgetCard title="Zeitleiste" badge="Lokal" badgeTone="neutral">
+    <WidgetCard title="Quick-Work" badge="Lokal" badgeTone="neutral">
       <QuickAdd />
       <div className="mb-5">
         <ProjectFilter value={filter} onChange={setFilter} />
