@@ -13,7 +13,7 @@ import { useTasksAndEvents } from "@/lib/useTasksAndEvents";
  * useTasksAndEvents() (aktuell Platzhalter-Daten).
  */
 export default function TimelineSection() {
-  const { items, isMock } = useTasksAndEvents();
+  const { items } = useTasksAndEvents();
   const [filter, setFilter] = useState<FilterValue>("all");
 
   const filtered = useMemo(
@@ -22,14 +22,13 @@ export default function TimelineSection() {
   );
 
   return (
-    <WidgetCard title="Zeitleiste" badge={isMock ? "Platzhalter" : "Live"} badgeTone={isMock ? "neutral" : "accent"}>
+    <WidgetCard title="Zeitleiste" badge="Lokal" badgeTone="neutral">
       <div className="mb-5">
         <ProjectFilter value={filter} onChange={setFilter} />
       </div>
       <CombinedTimeline items={filtered} onToggle={toggleUserTask} onRemove={removeUserTask} />
       <p className="mt-5 border-t border-line pt-4 text-xs text-muted">
-        Termine (durchgezogener Rahmen) + To-Dos (gestrichelt) · Quelle:{" "}
-        {isMock ? "Platzhalter-Daten" : <span className="font-mono">dashboard.todo_items</span>}
+        Termine (durchgezogener Rahmen) + To-Dos (gestrichelt) · Quelle: lokal im Browser (localStorage)
       </p>
     </WidgetCard>
   );

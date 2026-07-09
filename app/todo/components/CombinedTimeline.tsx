@@ -75,7 +75,9 @@ export default function CombinedTimeline({ items, onToggle, onRemove }: Timeline
   const groups = groupByDay(items, todayStr);
 
   if (items.length === 0) {
-    return <p className="text-sm text-muted">Keine Punkte für diesen Filter.</p>;
+    return (
+      <p className="text-sm text-muted">Keine Aufgaben — oben unter „Neue Aufgabe“ anlegen.</p>
+    );
   }
 
   return (

@@ -6,7 +6,7 @@ Dark Mode als einzige Option, ein Widget pro Datenquelle, Frontend strikt **read
 | Widget | Datenquelle | Status |
 |---|---|---|
 | Morgen-Briefing | Supabase-Tabelle `morning_briefing` | live, sobald Tabelle existiert |
-| Fokus heute / To-Do (`/todo`) | zentraler Hook `useTasksAndEvents()` | Platzhalter-Daten, Anbindung folgt (s. unten) |
+| Fokus heute / To-Do (`/todo`) | eigene Aufgaben (localStorage) | funktionsfähig; Kalender-Anbindung optional (s. unten) |
 | DDD Übersicht | Supabase-Tabelle `ddd_stats` | live, sobald Tabelle existiert |
 | GitHub Activity | GitHub REST API (`GITHUB_REPO`) | live, sobald Repo erreichbar |
 | Social Media | Supabase-Tabelle `social_stats` | live, sobald Tabelle existiert |
@@ -202,26 +202,29 @@ bleiben unverändert — sie kennen nur den `SocialStats`-Typ.
 
 ## To-Do-Bereich (`/todo`)
 
-Ersetzt den früheren `/kalender`. Fünf Bausteine unter `app/todo/components/`
+Ersetzt den früheren `/kalender`. Bausteine unter `app/todo/components/`
 (Fokus heute, Yin-Yang-Fortschrittsring, Kombi-Zeitleiste, Prioritäts-Badges,
-Projekt-Filter), alle gespeist über den zentralen Hook `useTasksAndEvents()`
-(`lib/useTasksAndEvents.ts`). Der Hook führt Termine und Erinnerungen zu einem
-normalisierten `TaskOrEvent[]` zusammen (Typen in `lib/todo-types.ts`).
+Projekt-Filter, Formular „Neue Aufgabe"), alle gespeist über den zentralen
+Hook `useTasksAndEvents()` (`lib/useTasksAndEvents.ts`). Der Hook liefert einen
+normalisierten `TaskOrEvent[]`-Strom (Typen in `lib/todo-types.ts`).
 
-Aktuell liefert er deterministische Platzhalter-Daten (`lib/todo-mock.ts`,
-fester Datensatz, kein Hydration-Mismatch).
+**Datenquelle:** ausschließlich selbst erstellte Aufgaben, gespeichert lokal im
+Browser (`lib/todo-store.ts`, localStorage, `useSyncExternalStore` — SSR-sicher,
+tab-übergreifend). Kein Platzhalter-Datensatz. Anlegen über das Widget „Neue
+Aufgabe" auf `/todo` bzw. den Button im Overview-Fokus-Widget (`/todo#neu`).
+Eigene Aufgaben sind in der Zeitleiste abhak- und löschbar.
 
-**Warum keine direkte MCP-Anbindung?** Die iOS-/Google-Kalender-MCP-Verbindung
-lebt im Claude-Client (Agent-Seite), **nicht** im Vercel-Runtime der App — die
-deployte App kann MCP-Tools nicht aufrufen. Der Weg zu Live-Daten führt daher
-wie bei allen anderen Widgets über Supabase:
+**Kalender-Anbindung später (optional):** Die iOS-/Google-Kalender-MCP-
+Verbindung lebt im Claude-Client (Agent-Seite), **nicht** im Vercel-Runtime —
+die deployte App kann MCP-Tools nicht aufrufen. Echte Termine führen wie bei
+allen anderen Widgets über Supabase:
 
 1. Tabelle `dashboard.todo_items` anlegen (Migration analog `social_stats`).
 2. Agent/Hermes synct Kalender + Erinnerungen per MCP → Supabase.
-3. In `lib/useTasksAndEvents.ts` `generateTasksAndEvents()` gegen einen Fetch
-   auf einen Route Handler (z. B. `app/api/todo/route.ts`, serverseitig
-   `getSupabase()`) tauschen und `isMock: false` setzen. Die Komponenten
-   bleiben unverändert — sie kennen nur den `TaskOrEvent`-Typ.
+3. In `lib/useTasksAndEvents.ts` eine zweite Quelle (Fetch auf einen Route
+   Handler, z. B. `app/api/todo/route.ts`, serverseitig `getSupabase()`) neben
+   die User-Aufgaben mergen. Die Komponenten bleiben unverändert — sie kennen
+   nur den `TaskOrEvent`-Typ.
 
 ## Hermes-Scripts (schreiben nach Supabase, laufen lokal per Cron)
 

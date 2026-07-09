@@ -14,7 +14,7 @@ const fmtTime = new Intl.DateTimeFormat("de-AT", { hour: "2-digit", minute: "2-d
  * Kompakte Variante der /todo-Seite, gespeist aus demselben zentralen Hook.
  */
 export default function TodoFokus() {
-  const { today, isMock } = useTasksAndEvents();
+  const { today } = useTasksAndEvents();
 
   const { top, done, total, openCount } = useMemo(() => {
     const open = today.filter((it) => !it.done);
@@ -31,9 +31,11 @@ export default function TodoFokus() {
   }, [today]);
 
   return (
-    <WidgetCard title="Fokus heute" badge={isMock ? "Platzhalter" : "Live"} badgeTone={isMock ? "neutral" : "accent"}>
+    <WidgetCard title="Fokus heute" badge="Lokal" badgeTone="neutral">
       {top.length === 0 ? (
-        <p className="text-sm text-muted">Nichts Offenes mehr für heute.</p>
+        <p className="text-sm text-muted">
+          {total === 0 ? "Noch keine Aufgaben für heute." : "Nichts Offenes mehr für heute."}
+        </p>
       ) : (
         <ul className="space-y-2.5">
           {top.map((it) => {

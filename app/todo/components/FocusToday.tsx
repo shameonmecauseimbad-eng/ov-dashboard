@@ -22,7 +22,7 @@ function timeLabel(it: TaskOrEvent): string {
  * (erledigt/gesamt heute). Desktop nebeneinander, Mobile gestapelt.
  */
 export default function FocusToday() {
-  const { today, isMock } = useTasksAndEvents();
+  const { today } = useTasksAndEvents();
   const [expanded, setExpanded] = useState(false);
 
   const { focus, rest, done, total } = useMemo(() => {
@@ -40,11 +40,15 @@ export default function FocusToday() {
   }, [today]);
 
   return (
-    <WidgetCard title="Fokus heute" badge={isMock ? "Platzhalter" : "Live"} badgeTone={isMock ? "neutral" : "accent"}>
+    <WidgetCard title="Fokus heute" badge="Lokal" badgeTone="neutral">
       <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:gap-8">
         <div className="min-w-0 flex-1">
           {focus.length === 0 ? (
-            <p className="text-sm text-muted">Nichts Offenes mehr für heute. 🌓</p>
+            <p className="text-sm text-muted">
+              {total === 0
+                ? 'Noch keine Aufgaben — leg unten unter „Neue Aufgabe“ welche an.'
+                : 'Nichts Offenes mehr für heute. 🌓'}
+            </p>
           ) : (
             <ul className="space-y-3">
               {focus.map((it) => {
