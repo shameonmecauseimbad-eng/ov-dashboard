@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import CombinedTimeline from "@/app/todo/components/CombinedTimeline";
 import ProjectFilter, { type FilterValue } from "@/app/todo/components/ProjectFilter";
+import QuickAdd from "@/app/todo/components/QuickAdd";
 import WidgetCard from "@/components/WidgetCard";
 import { removeUserTask, toggleUserTask } from "@/lib/todo-store";
 import { useTasksAndEvents } from "@/lib/useTasksAndEvents";
@@ -23,6 +24,7 @@ export default function TimelineSection() {
 
   return (
     <WidgetCard title="Zeitleiste" badge="Lokal" badgeTone="neutral">
+      <QuickAdd />
       <div className="mb-5">
         <ProjectFilter value={filter} onChange={setFilter} />
       </div>
