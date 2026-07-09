@@ -5,13 +5,25 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import SpinningLogo from "@/components/SpinningLogo";
 
-const NAV = [
+type NavLink = { href: string; label: string };
+type NavGroup = { group: string; children: NavLink[] };
+type NavItem = NavLink | NavGroup;
+
+const isGroup = (item: NavItem): item is NavGroup => "group" in item;
+
+// To-Do direkt unter Overview; DDD + RedzoneEarth gebündelt unter "Projects".
+const NAV: NavItem[] = [
   { href: "/", label: "Overview" },
-  { href: "/ddd", label: "DDD" },
-  { href: "/redzone", label: "RedzoneEarth" },
+  { href: "/todo", label: "To-Do" },
+  {
+    group: "Projects",
+    children: [
+      { href: "/ddd", label: "DDD" },
+      { href: "/redzone", label: "RedzoneEarth" },
+    ],
+  },
   { href: "/social", label: "Social Media" },
   { href: "/krypto", label: "Krypto" },
-  { href: "/todo", label: "To-Do" },
   { href: "/briefing", label: "Morgen-Briefing" },
 ];
 
@@ -89,9 +101,40 @@ export default function Sidebar() {
           </div>
         </div>
 
-        <nav aria-label="Projekte" className="flex-1 overflow-y-auto py-4">
+        <nav aria-label="Bereiche" className="flex-1 overflow-y-auto py-4">
           <ul className="space-y-0.5">
             {NAV.map((item) => {
+              if (isGroup(item)) {
+                return (
+                  <li key={item.group} className="pt-3 first:pt-0">
+                    <p className="px-4 pb-1 text-[11px] font-medium uppercase tracking-[0.16em] text-muted/70">
+                      {item.group}
+                    </p>
+                    <ul className="space-y-0.5">
+                      {item.children.map((child) => {
+                        const active = pathname === child.href;
+                        return (
+                          <li key={child.href}>
+                            <Link
+                              href={child.href}
+                              onClick={() => setOpen(false)}
+                              aria-current={active ? "page" : undefined}
+                              className={`flex border-l-2 px-4 py-2.5 pl-6 text-sm transition-colors ${
+                                active
+                                  ? "border-accent bg-white/[0.04] font-medium text-foreground"
+                                  : "border-transparent text-muted hover:bg-white/5 hover:text-foreground"
+                              }`}
+                            >
+                              {child.label}
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </li>
+                );
+              }
+
               const active = pathname === item.href;
               return (
                 <li key={item.href}>
