@@ -75,7 +75,7 @@ export default function TaskCreator() {
 
   return (
     <WidgetCard title="Neue Aufgabe" badge="Lokal" badgeTone="neutral">
-      {/* Modus-Umschalter: strukturiertes Formular ⇄ Schnell-Eingabe (Quick-Work) */}
+      {/* Modus-Umschalter: strukturiertes Formular ⇄ Schnell-Eingabe (NL-Parsing) */}
       <div className="mb-5 inline-flex rounded-lg border border-line p-0.5" role="tablist" aria-label="Eingabemodus">
         {([["form", "Formular"], ["quick", "Schnell"]] as const).map(([m, label]) => (
           <button

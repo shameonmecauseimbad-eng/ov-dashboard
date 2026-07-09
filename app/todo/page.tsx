@@ -34,7 +34,7 @@ export default function TodoPage() {
                 <TaskCreator />
               </Widget>
             </div>
-            <Widget title="Quick-Work" index={2}>
+            <Widget title="Zeitleiste" index={2}>
               <TimelineSection />
             </Widget>
             <Widget title="Zeitfenster-Vorschläge" index={3}>
