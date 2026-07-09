@@ -15,6 +15,9 @@ const DAY_START = 8 * 60; // 08:00
 const DAY_END = 20 * 60; // 20:00
 const MIN_GAP = 30; // Minuten
 const DEFAULT_DUR = 30;
+const LONG_TASK = 90; // ab dieser Dauer gilt eine Aufgabe als „lang" → Pause empfohlen
+const BREAK_AFTER_LONG = 15; // empfohlene Pause nach einer langen Aufgabe (Minuten)
+const BUFFER = 10; // stiller Puffer zwischen zwei Blöcken, damit sie nicht direkt aneinanderkleben
 const PRIORITY_RANK: Record<Priority, number> = { high: 0, medium: 1, low: 2 };
 
 function minutesOf(iso: string): number {
@@ -25,7 +28,9 @@ function hhmm(min: number): string {
   return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
 }
 
-type Suggestion = { task: TaskOrEvent; start: number; end: number };
+type Suggestion =
+  | { kind: "task"; task: TaskOrEvent; start: number; end: number }
+  | { kind: "break"; start: number; end: number };
 
 /**
  * Automatische Zeitfenster-Vorschläge (Feature 8). Ersetzt das MCP-Tool
@@ -68,21 +73,33 @@ export default function TimeSuggestions() {
 
     const out: Suggestion[] = [];
     const workGaps = gaps.map((g) => ({ ...g }));
+    let placed = 0;
     for (const task of candidates) {
       const dur = task.estimatedMinutes && task.estimatedMinutes > 0 ? task.estimatedMinutes : DEFAULT_DUR;
       const gap = workGaps.find((g) => g.end - g.start >= Math.max(MIN_GAP, dur));
       if (!gap) continue;
       const start = gap.start;
       const end = start + dur;
-      out.push({ task, start, end });
+      out.push({ kind: "task", task, start, end });
       gap.start = end; // Lücke verkleinern
-      if (out.length >= 5) break;
+      placed += 1;
+      if (placed >= 5) break;
+
+      // Smarte Pause: nach langen Aufgaben eine sichtbare Pause empfehlen,
+      // sonst nur einen stillen Puffer, damit Blöcke nicht direkt aneinanderkleben.
+      const isLong = dur >= LONG_TASK;
+      const breakLen = isLong ? BREAK_AFTER_LONG : BUFFER;
+      const breakEnd = Math.min(gap.end, gap.start + breakLen);
+      if (breakEnd > gap.start) {
+        if (isLong) out.push({ kind: "break", start: gap.start, end: breakEnd });
+        gap.start = breakEnd; // Pause/Puffer belegt die Lücke mit
+      }
     }
     return out;
   }, [items, today]);
 
-  const schedule = (s: Suggestion) => {
-    void withSync(() => rescheduleUserTask(s.task.id, todayStr, hhmm(s.start)), `„${s.task.title}“ für ${hhmm(s.start)} eingeplant.`);
+  const schedule = (task: TaskOrEvent, start: number) => {
+    void withSync(() => rescheduleUserTask(task.id, todayStr, hhmm(start)), `„${task.title}“ für ${hhmm(start)} eingeplant.`);
   };
 
   return (
@@ -94,6 +111,19 @@ export default function TimeSuggestions() {
       ) : (
         <ul className="space-y-2">
           {suggestions.map((s) => {
+            if (s.kind === "break") {
+              return (
+                <li
+                  key={`break-${s.start}`}
+                  className="flex items-center gap-3 rounded-lg border border-dashed border-white/10 px-3.5 py-2 opacity-70"
+                >
+                  <span className="w-24 shrink-0 font-mono text-xs tabular-nums text-muted">
+                    {hhmm(s.start)}–{hhmm(s.end)}
+                  </span>
+                  <span className="min-w-0 flex-1 text-xs uppercase tracking-wide text-muted">Pause empfohlen</span>
+                </li>
+              );
+            }
             const st = PRIORITY_STYLE[s.task.priority];
             return (
               <li key={s.task.id} className="flex items-center gap-3 rounded-lg border border-dashed border-white/20 px-3.5 py-2.5">
@@ -103,7 +133,7 @@ export default function TimeSuggestions() {
                 <span className={`min-w-0 flex-1 truncate text-sm text-foreground ${st.weight} ${st.opacity}`}>{s.task.title}</span>
                 <button
                   type="button"
-                  onClick={() => schedule(s)}
+                  onClick={() => schedule(s.task, s.start)}
                   className="shrink-0 rounded-lg border border-line px-3 py-1 text-xs text-foreground transition-colors hover:bg-white/10"
                 >
                   Einplanen
@@ -114,7 +144,7 @@ export default function TimeSuggestions() {
         </ul>
       )}
       <p className="mt-5 border-t border-line pt-4 text-xs text-muted">
-        Lokale Lückensuche als suggest_time-Ersatz · nur Vorschlag, kein automatischer Eintrag
+        Smarte Lückensuche · Pause nach langen Aufgaben (≥ {LONG_TASK} Min) · nur Vorschlag, kein automatischer Eintrag
       </p>
     </WidgetCard>
   );
