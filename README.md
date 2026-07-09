@@ -10,6 +10,7 @@ Dark Mode als einzige Option, ein Widget pro Datenquelle, Frontend strikt **read
 | DDD Übersicht | Supabase-Tabelle `ddd_stats` | live, sobald Tabelle existiert |
 | GitHub Activity | GitHub REST API (`GITHUB_REPO`) | live, sobald Repo erreichbar |
 | Social Media | Supabase-Tabelle `social_stats` | live, sobald Tabelle existiert |
+| Social Media Detail (`/social`) | `social_stats_daily` + `social_posts` | Mock-Daten, bis Hermes befüllt (s. unten) |
 | Krypto-Kurse | CoinGecko public API (kein Key) | live, 60-s-Refresh im Browser |
 | RedzoneEarth Ads | Ad-Provider-API | Platzhalter („Noch nicht live“) |
 
@@ -100,9 +101,40 @@ create table if not exists dashboard.morning_briefing (
   erstellt_am timestamptz not null default now()
 );
 
+-- 3b) Detail-Tabellen für die /social-Sektion (Follower-Chart, Wachstumsrate,
+-- Engagement, Top-Content, Heatmap). Bewusst getrennt von "social_stats"
+-- (dortige Grain: ein Snapshot pro Plattform, für das Overview-Widget) — hier
+-- Zeitreihe (eine Zeile pro Plattform+Tag) bzw. eine Zeile pro Post.
+create table if not exists dashboard.social_stats_daily (
+  platform text not null,
+  date date not null,
+  followers int not null default 0,
+  views int not null default 0,
+  likes int not null default 0,
+  comments int not null default 0,
+  shares int not null default 0,
+  updated_at timestamptz not null default now(),
+  primary key (platform, date)
+);
+
+create table if not exists dashboard.social_posts (
+  post_id text primary key,
+  platform text not null,
+  post_title text not null,
+  post_url text not null,
+  published_at date not null,
+  views int not null default 0,
+  likes int not null default 0,
+  comments int not null default 0,
+  shares int not null default 0,
+  updated_at timestamptz not null default now()
+);
+
 -- 4) RLS + Lese-Policies (idempotent)
 alter table dashboard.ddd_stats enable row level security;
 alter table dashboard.social_stats enable row level security;
+alter table dashboard.social_stats_daily enable row level security;
+alter table dashboard.social_posts enable row level security;
 alter table dashboard.morning_briefing enable row level security;
 
 drop policy if exists "anon liest ddd_stats" on dashboard.ddd_stats;
@@ -111,6 +143,14 @@ create policy "anon liest ddd_stats" on dashboard.ddd_stats
 
 drop policy if exists "anon liest social_stats" on dashboard.social_stats;
 create policy "anon liest social_stats" on dashboard.social_stats
+  for select to anon, authenticated using (true);
+
+drop policy if exists "anon liest social_stats_daily" on dashboard.social_stats_daily;
+create policy "anon liest social_stats_daily" on dashboard.social_stats_daily
+  for select to anon, authenticated using (true);
+
+drop policy if exists "anon liest social_posts" on dashboard.social_posts;
+create policy "anon liest social_posts" on dashboard.social_posts
   for select to anon, authenticated using (true);
 
 drop policy if exists "anon liest morning_briefing" on dashboard.morning_briefing;
@@ -157,6 +197,22 @@ Es gibt **keine** Insert-/Update-Policies für `anon` — Schreiben ist per RLS 
 1. Komponente unter `components/widgets/MeinWidget.tsx` anlegen
    (Hülle: `WidgetCard`, Kennzahlen: `StatTile`, Fehlerfälle: `ErrorNote`).
 2. In `app/page.tsx` importieren und im `<main>`-Grid einhängen. Fertig.
+
+## Social-Media-Detailseite (`/social`)
+
+Sechs Widgets (Follower-Wachstum, Wachstumsrate, Engagement-Rate,
+Top-Content-Ranking, Posting-Heatmap, Cross-Platform Reach) unter
+`app/social/components/`, gespeist über den zentralen Hook
+`useSocialStats()` (`lib/useSocialStats.ts`). Aktuell liefert der Hook
+deterministische Mock-Daten aus `lib/social-mock.ts` (fixer Seed, kein
+Hydration-Mismatch) — Typen in `lib/social-types.ts`.
+
+**Umstellung auf Live-Daten:** Sobald `dashboard.social_stats_daily` und
+`dashboard.social_posts` vom Hermes Agent befüllt sind, in
+`lib/useSocialStats.ts` den `generateSocialStats()`-Aufruf gegen einen Fetch
+auf einen Route Handler (z. B. `app/api/social-stats/route.ts`, der
+serverseitig `getSupabase()` nutzt) tauschen. Die sechs Widget-Komponenten
+bleiben unverändert — sie kennen nur den `SocialStats`-Typ.
 
 ## Hermes-Scripts (schreiben nach Supabase, laufen lokal per Cron)
 

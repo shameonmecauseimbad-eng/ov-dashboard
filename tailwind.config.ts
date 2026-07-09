@@ -179,6 +179,8 @@ const config: Config = {
         stat: ["clamp(1.5rem, 1.1rem + 1.5vw, 2.25rem)", { lineHeight: "1.1" }],
         // kleinere Stufe für lange Werte (z. B. "€ 1.842,50"), damit nichts abschneidet
         "stat-sm": ["clamp(1.15rem, 0.9rem + 1vw, 1.65rem)", { lineHeight: "1.15" }],
+        // größere Stufe für Hero-Kacheln (z. B. Cross-Platform-Reichweite)
+        "stat-lg": ["clamp(2.25rem, 1.4rem + 3.5vw, 4rem)", { lineHeight: "1.05" }],
         hero: ["clamp(1.35rem, 1.1rem + 1vw, 1.75rem)", { lineHeight: "1.2" }],
       },
     },
