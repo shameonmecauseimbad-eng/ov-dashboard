@@ -37,8 +37,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="de">
+      {/* Hintergrund permanent auf dem dunkleren Ton (#0a0a0a) — das frühere
+          „Atmen" (animate-breathe-bg, pulsierte 0a0a0a ↔ 101013) ist bewusst aus. */}
       <body
-        className={`${display.variable} ${geistSans.variable} ${geistMono.variable} animate-breathe-bg bg-background font-sans text-foreground antialiased motion-reduce:animate-none`}
+        className={`${display.variable} ${geistSans.variable} ${geistMono.variable} bg-background font-sans text-foreground antialiased`}
       >
         <ParticleField />
         <LightGradient />

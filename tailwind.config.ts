@@ -108,11 +108,6 @@ const config: Config = {
           "84%": { transform: "translateX(2px)" },
           "100%": { transform: "translateX(0)" },
         },
-        // P2: sehr dezentes Hintergrund-Atmen der ganzen Seite
-        breatheBg: {
-          "0%, 100%": { backgroundColor: "#0a0a0a" },
-          "50%": { backgroundColor: "#101013" },
-        },
         // P1 Boot-Intro: Ring zeichnet sich, Flächen faden ein, Logo skaliert/rotiert
         bootDraw: {
           from: { strokeDashoffset: "295" },
@@ -166,7 +161,6 @@ const config: Config = {
         "blur-in": "blurIn 0.4s ease-out 1",
         shimmer: "shimmer 1.6s linear infinite",
         "error-in": "errorIn 0.5s ease-out 1",
-        "breathe-bg": "breatheBg 6s ease-in-out infinite",
         "boot-draw": "bootDraw 0.9s ease-out forwards",
         "boot-fill": "bootFill 1.2s ease-out forwards",
         "boot-logo": "bootLogo 1s ease-out forwards",
