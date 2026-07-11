@@ -67,10 +67,10 @@ export default function TopicGraph({ nodes, edges }: TopicGraphProps) {
   }
 
   return (
-    <div>
+    <div className="mx-auto max-w-[460px]">
       <svg
         viewBox={`0 0 ${W} ${H}`}
-        className="w-full"
+        className="mx-auto block w-full"
         role="img"
         aria-label="Themen-Netz: Verbindungen über gemeinsame Begriffe"
       >

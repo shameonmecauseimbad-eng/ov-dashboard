@@ -33,26 +33,26 @@ export default async function BriefingTimeline() {
       {result.status === "error" && <ErrorNote>{result.hint}</ErrorNote>}
 
       {result.status === "live" && (
-        <div className="space-y-6">
+        <div className="space-y-8">
           {days.map((day) => (
             <div key={day.datum}>
-              <p className="mb-3 text-xs font-medium uppercase tracking-[0.14em] text-muted">
+              <p className="mb-4 text-xs font-medium uppercase tracking-[0.14em] text-muted">
                 {fmtTag.format(new Date(day.datum))}
               </p>
-              <ul className="relative ml-1.5 space-y-4 border-l border-line pl-5">
+              <ul className="relative ml-1.5 space-y-6 border-l border-line pl-5">
                 {day.entries.map((entry, i) => (
                   <li key={`${entry.thema}-${i}`} className="relative">
                     <span
                       className="absolute -left-[23px] top-1.5 h-2 w-2 rounded-full border-2 border-background bg-foreground"
                       aria-hidden="true"
                     />
-                    <div className="mb-0.5 flex items-baseline justify-between gap-3">
+                    <div className="mb-1 flex items-baseline justify-between gap-3">
                       <span className="text-sm font-medium text-foreground">{entry.thema}</span>
                       <span className="shrink-0 font-mono text-xs tabular-nums text-muted">
                         {fmtZeit.format(new Date(entry.erstellt_am))}
                       </span>
                     </div>
-                    <p className="line-clamp-2 text-sm leading-relaxed text-foreground/85">
+                    <p className="line-clamp-3 text-sm leading-relaxed text-foreground/85">
                       {entry.inhalt}
                     </p>
                   </li>
