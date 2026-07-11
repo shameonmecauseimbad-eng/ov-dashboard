@@ -272,6 +272,7 @@ allen anderen Widgets über Supabase:
 ```bash
 node scripts/sync-social-stats.js
 node scripts/sync-morning-briefing.js --thema "Märkte" --inhalt "Text…" [--datum YYYY-MM-DD]
+node scripts/seed-briefing-topics.js
 ```
 
 - **sync-social-stats.js:** Upsert (`platform` = Unique-Key) nach `social_stats`.
@@ -279,8 +280,14 @@ node scripts/sync-morning-briefing.js --thema "Märkte" --inhalt "Text…" [--da
   `syncSocialStats([...])` und übergibt echte Zahlen.
 - **sync-morning-briefing.js:** Insert nach `morning_briefing` — Eintrag per
   CLI-Argumente oder als Import `insertBriefing({ thema, inhalt, datum? })`.
+- **briefing-topics.config.js:** kanonische Themen-Liste (`BRIEFING_TOPICS`) —
+  die eine Quelle der Wahrheit, welche Themen der Hermes Agent täglich schreibt
+  (aktuell: Märkte, Geldpolitik, Krypto, US-Politik, China, Iran, Energie & Öl).
+- **seed-briefing-topics.js:** idempotent — legt für jedes Thema aus der Config
+  einen Platzhalter-Eintrag für heute an, falls noch keiner existiert. Damit
+  zeigt das Dashboard das komplette Themen-Set, bevor echter Text kommt.
 
-Beide loggen Fehler laut und beenden mit Exit-Code 1 (kein stiller Fail).
+Alle loggen Fehler laut und beenden mit Exit-Code 1 (kein stiller Fail).
 Scraping-/Recherche-Logik gehört nicht in dieses Repo.
 
 ## Deploy auf Vercel
