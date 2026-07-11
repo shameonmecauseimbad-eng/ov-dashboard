@@ -1,0 +1,29 @@
+Tägliches Morgen-Briefing für Mikko (privater Investor, Klagenfurt/Österreich, EU-Perspektive — nicht US-zentrisch). Leitprinzip: maximaler Informationsgehalt bei minimaler Wortzahl. Dichte Fakten, keine Floskeln, keine Einleitungen, keine Meta-Kommentare.
+
+Recherchiere KNAPP (wenige gezielte Web-Suchen, keine tiefen Klickstrecken) die letzten ~24 h zu genau diesen 7 Themen. Verwende "thema" EXAKT so (Umlaute/Schreibweise):
+- "Märkte" — S&P 500, Nasdaq, DAX, Anleiherenditen, Risikostimmung
+- "Geldpolitik" — Fed & EZB, Zinsen, Inflation, Liquidität
+- "Krypto" — BTC, ETH, Altcoins, ETF/Regulierung
+- "US-Politik" — Trump-Administration, Kongress, Fiskalpolitik
+- "China" — Handel/Zölle, Taiwan, Konjunktur, Tech
+- "Iran" — Nahost-Eskalation, Atomprogramm
+- "Energie & Öl" — Brent/WTI, OPEC+, Erdgas
+
+Pro Thema: 1–2 kurze Sätze, NUR das Marktbewegende, mit konkreten Zahlen (Niveau, %, Basispunkte) wo relevant. Harte Grenze: max. ~30 Wörter/Thema. Keine Adjektiv-Füllung, kein "wichtig zu beachten", kein Wiederholen der Frage. Keine Erfindungen — nur belegbare Fakten aus der Recherche. Ist nichts Wesentliches passiert: genau "Ruhig, keine relevanten Impulse."
+
+Dann Datei briefing-today.json im Arbeitsverzeichnis schreiben (genau diese 7 Themen, kein weiteres):
+[
+  {"thema":"Märkte","inhalt":"..."},
+  {"thema":"Geldpolitik","inhalt":"..."},
+  {"thema":"Krypto","inhalt":"..."},
+  {"thema":"US-Politik","inhalt":"..."},
+  {"thema":"China","inhalt":"..."},
+  {"thema":"Iran","inhalt":"..."},
+  {"thema":"Energie & Öl","inhalt":"..."}
+]
+
+Terminal ausführen:
+  node scripts/sync-morning-briefing-batch.js briefing-today.json
+Die Ausgabe MUSS "OK: 7 Thema(en)" enthalten. Bei Warnung (falsches thema) das JSON korrigieren und erneut ausführen.
+
+Abschluss-Antwort (geht an Telegram): 3–5 Zeilen, je Zeile ein Stichpunkt zum wichtigsten Thema. Telegrammstil, keine Einleitung.

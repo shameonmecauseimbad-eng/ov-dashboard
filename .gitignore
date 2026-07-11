@@ -30,6 +30,9 @@ yarn-error.log*
 .env.*
 !.env.example
 
+# Hermes: transiente Briefing-Payload des Cron-Jobs (wird pro Lauf neu geschrieben)
+/briefing-today.json
+
 # vercel
 .vercel
 
