@@ -24,6 +24,6 @@ Dann Datei briefing-today.json im Arbeitsverzeichnis schreiben (genau diese 7 Th
 
 Terminal ausführen:
   node scripts/sync-morning-briefing-batch.js briefing-today.json
-Die Ausgabe MUSS "OK: 7 Thema(en)" enthalten. Bei Warnung (falsches thema) das JSON korrigieren und erneut ausführen.
+Die Ausgabe MUSS "OK: 7 Thema(en)" enthalten. Bei Warnung (falsches thema) das JSON korrigieren und erneut ausführen. KEINE weiteren Schritte (kein npm/lint/build, kein git, kein Test) — nur recherchieren, JSON schreiben, Sync-Skript ausführen.
 
-Abschluss-Antwort (geht an Telegram): 3–5 Zeilen, je Zeile ein Stichpunkt zum wichtigsten Thema. Telegrammstil, keine Einleitung.
+Deine Abschluss-Antwort ist AUSSCHLIESSLICH das Briefing-Digest für Telegram: 3–5 Zeilen, je Zeile ein Stichpunkt zum wichtigsten Thema (mit der relevantesten Zahl). Telegrammstil, keine Einleitung, KEINE Meta-Kommentare über JSON/Sync/Lint/technischen Ablauf.
