@@ -43,13 +43,15 @@ export default function Home() {
           <Widget title="DDD Statistics" index={2} skeleton="stats" href="/ddd">
             <DddKennzahlen />
           </Widget>
-          <Widget title="GitHub Activity" index={3}>
-            <GithubActivity />
-          </Widget>
         </div>
         <div className="flex flex-1 flex-col gap-4 sm:gap-5">
-          <Widget title="Social Media" index={4} href="/social">
+          <Widget title="Social Media" index={3} href="/social">
             <SocialMedia />
+          </Widget>
+          {/* GitHub neben (statt unter) Fokus & DDD — sitzt so auf gleicher
+              Höhe wie der Fokus/DDD-Stack der linken Spalte. */}
+          <Widget title="GitHub Activity" index={4}>
+            <GithubActivity />
           </Widget>
           <Widget title="Krypto-Kurse" index={5} dataId="krypto" href="/krypto">
             <KryptoKurse />

@@ -57,6 +57,14 @@ export function latestPerThema(rows: BriefingRow[]): BriefingRow[] {
   return Array.from(map.values());
 }
 
+/** Erster Satz eines Inhalts, hart auf maxLen gekürzt — für einzeilige Snippets. */
+export function firstSentence(text: string, maxLen = 120): string {
+  const trimmed = text.trim();
+  const match = trimmed.match(/^.*?[.!?](?=\s|$)/);
+  const sentence = match ? match[0] : trimmed;
+  return sentence.length > maxLen ? `${sentence.slice(0, maxLen - 1)}…` : sentence;
+}
+
 // ─── TL;DR ───────────────────────────────────────────────────────────────────
 
 export type SummaryEntry = { thema: string; snippet: string; datum: string };

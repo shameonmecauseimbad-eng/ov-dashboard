@@ -73,7 +73,7 @@ export default async function BriefingDelta() {
                     Letzter Eintrag: {fmtDatum.format(new Date(entry.latest.datum))}
                   </p>
                 ) : (
-                  <p className="line-clamp-2 text-sm leading-relaxed text-foreground/90">
+                  <p className="line-clamp-3 text-sm leading-relaxed text-foreground/90">
                     {entry.latest.inhalt}
                   </p>
                 )}
