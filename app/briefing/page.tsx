@@ -23,24 +23,24 @@ export default function BriefingPage() {
           <WatchlistPuls />
         </Widget>
         <div className="flex flex-col gap-4 sm:flex-row sm:gap-5">
-          <div className="flex flex-1 flex-col">
+          <div className="flex min-w-0 flex-1 flex-col">
             <Widget title="Morgen-Briefing" index={2}>
               <MorgenBriefing />
             </Widget>
           </div>
-          <div className="flex flex-1 flex-col">
+          <div className="flex min-w-0 flex-1 flex-col">
             <Widget title="Seit gestern" index={3}>
               <BriefingDelta />
             </Widget>
           </div>
         </div>
         <div className="flex flex-col gap-4 sm:flex-row sm:gap-5">
-          <div className="flex flex-1 flex-col">
+          <div className="flex min-w-0 flex-1 flex-col">
             <Widget title="Zeitleiste" index={4}>
               <BriefingTimeline />
             </Widget>
           </div>
-          <div className="flex flex-1 flex-col">
+          <div className="flex min-w-0 flex-1 flex-col">
             <Widget title="Stimmungsbild" index={5}>
               <BriefingStimmung />
             </Widget>

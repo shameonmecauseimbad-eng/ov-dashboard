@@ -77,7 +77,7 @@ function EntryList({ entries }: { entries: TimelineEntryVM[] }) {
       {entries.map((e) => (
         <li key={e.key}>
           <div className="flex items-baseline justify-between gap-3">
-            <span className="text-sm font-medium text-foreground">{e.thema}</span>
+            <span className="min-w-0 truncate text-sm font-medium text-foreground">{e.thema}</span>
             <span className="shrink-0 font-mono text-xs tabular-nums text-muted">{e.zeit}</span>
           </div>
           <p className="mt-0.5 truncate text-sm leading-relaxed text-foreground/70">{e.snippet}</p>
