@@ -7,6 +7,7 @@ import { SectionNote } from "@/components/widgets/DddDetail";
 import WidgetCard from "@/components/WidgetCard";
 import { DRAUWERK, drauwerkStartpreis, goLiveFortschritt } from "@/lib/drauwerk";
 import { buildDrauwerkDemo, type DrauwerkDemo } from "@/lib/drauwerk-demo";
+import { loadDrauwerkInquiries } from "@/lib/drauwerk-inquiries";
 
 const int = new Intl.NumberFormat("de-AT");
 
@@ -121,7 +122,7 @@ function Eingang({ items }: { items: DrauwerkDemo["eingang"] }) {
               <span className="min-w-0 flex-1">
                 <span className="flex items-baseline gap-1.5">
                   <span className="truncate font-medium text-foreground">{e.name}</span>
-                  <span className="shrink-0 text-xs text-muted">· {e.ort}</span>
+                  {e.ort && <span className="shrink-0 text-xs text-muted">· {e.ort}</span>}
                 </span>
                 <span className="mt-0.5 block truncate text-xs text-muted">{e.nachricht}</span>
               </span>
@@ -150,9 +151,12 @@ function Eingang({ items }: { items: DrauwerkDemo["eingang"] }) {
                 <span>
                   Paket: <span className="text-foreground">{e.paket || "—"}</span>
                 </span>
-                <span>
-                  Quelle: <span className="text-foreground">{e.quelle}</span>
-                </span>
+                {e.quelle && (
+                  <span>
+                    {e.quelle.includes("@") ? "E-Mail" : "Quelle"}:{" "}
+                    <span className="text-foreground">{e.quelle}</span>
+                  </span>
+                )}
                 <span>
                   Status: <span className="text-foreground">{e.status}</span>
                 </span>
@@ -201,8 +205,12 @@ export function DrauwerkKennzahlenCard({ title }: { title: string }) {
 // Reihenfolge: Identität (real) → Betrieb: Anfragen & Besuche (Demo) →
 // Technik & Verlauf (real). Demo-Daten laufen rollierend bis „heute" mit.
 
-export default function DrauwerkDetail() {
-  const demo = buildDrauwerkDemo(Date.now());
+export default async function DrauwerkDetail() {
+  const now = Date.now();
+  const demo = buildDrauwerkDemo(now);
+  const inquiries = await loadDrauwerkInquiries(now);
+  const live = inquiries.status === "ok" ? inquiries.data : null;
+  const inqError = inquiries.status === "error" ? inquiries.message : null;
 
   // Architektur-Split Server vs. Client als Donut (dokumentierte Projektfakten).
   const archSlices = [
@@ -215,42 +223,85 @@ export default function DrauwerkDetail() {
       {/* 1 — Kennzahlen (real) */}
       <DrauwerkKennzahlenCard title="Kennzahlen" />
 
-      {/* 2 — Kundenanfragen im Zeitverlauf (Demo) */}
+      {/* 2 — Kundenanfragen im Zeitverlauf (live: Gmail · sonst Demo) */}
       <Reveal delayMs={100}>
-        <WidgetCard title="Kundenanfragen" badge="Demo" badgeTone="neutral">
+        <WidgetCard title="Kundenanfragen" badge={live ? "Gmail" : "Demo"} badgeTone={live ? "accent" : "neutral"}>
           <div className="mb-5 grid grid-cols-2 gap-5 sm:flex sm:items-baseline sm:gap-4">
-            <StatTile label="Anfragen (30 T)" value={demo.kpi.anfragen30} />
-            <StatTile label="Diese Woche" value={demo.kpi.anfragenWoche} />
-            <StatTile label="Conversion" value={demo.kpi.conversion} suffix=" %" maxFractionDigits={1} />
-            <StatTile label="Ø Antwortzeit" value={demo.kpi.antwortzeitStd} suffix=" Std." />
+            {live ? (
+              <>
+                <StatTile label="Anfragen (30 T)" value={live.anfragen30} />
+                <StatTile label="Diese Woche" value={live.anfragenWoche} />
+                <StatTile label="Ungelesen" value={live.ungelesen} />
+              </>
+            ) : (
+              <>
+                <StatTile label="Anfragen (30 T)" value={demo.kpi.anfragen30} />
+                <StatTile label="Diese Woche" value={demo.kpi.anfragenWoche} />
+                <StatTile label="Conversion" value={demo.kpi.conversion} suffix=" %" maxFractionDigits={1} />
+                <StatTile label="Ø Antwortzeit" value={demo.kpi.antwortzeitStd} suffix=" Std." />
+              </>
+            )}
           </div>
-          <MultiLineChart data={demo.anfragen} xKey="label" lines={[{ key: "anfragen", label: "Anfragen/Tag" }]} />
-          <DemoQuelle>
-            Echte Quelle später: Kontaktformular schreibt anonym nach{" "}
-            <span className="font-mono">dashboard.drauwerk_inquiries</span> (Supabase).
-          </DemoQuelle>
+          {live && live.anfragen30 === 0 ? (
+            <p className="py-8 text-center text-sm text-muted">Noch keine Anfragen im 30-Tage-Fenster.</p>
+          ) : (
+            <MultiLineChart
+              data={live ? live.serie : demo.anfragen}
+              xKey="label"
+              lines={[{ key: "anfragen", label: "Anfragen/Tag" }]}
+            />
+          )}
+          {live ? (
+            <SectionNote>
+              Anfragen pro Tag (30 Tage) · Quelle: <span className="font-mono">Gmail</span> (drauwerk@gmail.com),
+              Betreff „Neue Projektanfrage“ · stündlich aktualisiert
+            </SectionNote>
+          ) : (
+            <DemoQuelle>
+              {inqError ? `Gmail-Fehler: ${inqError}. ` : ""}Echte Quelle: Gmail-Postfach — Env{" "}
+              <span className="font-mono">GMAIL_CLIENT_ID/SECRET/REFRESH_TOKEN</span> setzen (siehe Setup).
+            </DemoQuelle>
+          )}
         </WidgetCard>
       </Reveal>
 
-      {/* 3 — Anfragen-Eingang zum Auslesen (Demo) */}
+      {/* 3 — Anfragen-Eingang zum Auslesen (live: Gmail · sonst Demo) */}
       <Reveal delayMs={150}>
-        <WidgetCard title="Anfragen-Eingang" badge="Demo" badgeTone="neutral">
-          <Eingang items={demo.eingang} />
-          <DemoQuelle>
-            Zeile aufklappen zum Lesen. Namen &amp; Texte sind fiktiv — echte Anfragen erscheinen hier, sobald das
-            Formular in Supabase schreibt.
-          </DemoQuelle>
+        <WidgetCard title="Anfragen-Eingang" badge={live ? "Gmail" : "Demo"} badgeTone={live ? "accent" : "neutral"}>
+          {live ? (
+            live.eingang.length > 0 ? (
+              <Eingang items={live.eingang} />
+            ) : (
+              <p className="py-8 text-center text-sm text-muted">Noch keine Anfragen im Postfach.</p>
+            )
+          ) : (
+            <Eingang items={demo.eingang} />
+          )}
+          {live ? (
+            <SectionNote>
+              Neueste Anfragen aus dem Postfach · „offen“ = ungelesen · Zeile aufklappen zum Lesen
+            </SectionNote>
+          ) : (
+            <DemoQuelle>
+              Zeile aufklappen zum Lesen. Namen &amp; Texte sind fiktiv — echte Anfragen erscheinen hier mit
+              Gmail-Anbindung.
+            </DemoQuelle>
+          )}
         </WidgetCard>
       </Reveal>
 
-      {/* 4 — Paket-Interesse aus den Anfragen (Demo) */}
+      {/* 4 — Paket-Interesse aus den Anfragen (live: Gmail · sonst Demo) */}
       <Reveal delayMs={200}>
-        <WidgetCard title="Paket-Interesse" badge="Demo" badgeTone="neutral">
-          <BarChart data={demo.paketInteresse} height={240} />
-          <DemoQuelle>
-            Wie oft welches Paket in den Anfragen vorausgewählt war (Signature führt). Quelle später: Formularfeld{" "}
-            <span className="font-mono">paket</span>.
-          </DemoQuelle>
+        <WidgetCard title="Paket-Interesse" badge={live ? "Gmail" : "Demo"} badgeTone={live ? "accent" : "neutral"}>
+          <BarChart data={live ? live.paketInteresse : demo.paketInteresse} height={240} />
+          {live ? (
+            <SectionNote>Paket-Vorauswahl der Anfragen (aus dem Betreff) · Quelle: Gmail</SectionNote>
+          ) : (
+            <DemoQuelle>
+              Wie oft welches Paket in den Anfragen vorausgewählt war (Signature führt). Quelle: Betreff-Zusatz „(Paket:
+              …)“.
+            </DemoQuelle>
+          )}
         </WidgetCard>
       </Reveal>
 
