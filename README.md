@@ -131,6 +131,35 @@ create table if not exists dashboard.redzone_stats (
   primary key (date, slot_id)
 );
 
+-- 3d) To-Dos der /todo-Sektion. IDs kommen vom Client (Format "user-…"),
+-- damit bestehende localStorage-Aufgaben verlustfrei migriert werden.
+create table if not exists dashboard.todo_items (
+  id text primary key,
+  title text not null,
+  type text not null default 'task' check (type in ('event','task')),
+  at timestamptz,
+  all_day boolean not null default false,
+  project_tag text not null default 'sonstiges',
+  priority text not null default 'medium' check (priority in ('high','medium','low')),
+  done boolean not null default false,
+  source text not null default 'user' check (source in ('mock','user')),
+  recurrence jsonb,
+  subtasks jsonb not null default '[]'::jsonb,
+  estimated_minutes int,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create or replace function dashboard.touch_updated_at() returns trigger
+language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end $$;
+drop trigger if exists todo_items_touch on dashboard.todo_items;
+create trigger todo_items_touch before update on dashboard.todo_items
+  for each row execute function dashboard.touch_updated_at();
+
 -- 4) RLS + Lese-Policies (idempotent)
 alter table dashboard.ddd_stats enable row level security;
 alter table dashboard.social_stats enable row level security;
@@ -162,6 +191,26 @@ create policy "anon liest redzone_stats" on dashboard.redzone_stats
 drop policy if exists "anon liest morning_briefing" on dashboard.morning_briefing;
 create policy "anon liest morning_briefing" on dashboard.morning_briefing
   for select to anon, authenticated using (true);
+
+-- 4b) todo_items: EINZIGE Tabelle mit anon-Schreibrecht. Geschrieben wird nur
+-- vom Route Handler /api/todos (server-seitiger Anon-Key, hinter Basic Auth) —
+-- der Service-Role-Key kommt NIE auf Vercel. Schlimmster Fall bei Key-Leak:
+-- diese To-Do-Tabelle, nie die übrigen Dashboard-/DDD-Daten.
+alter table dashboard.todo_items enable row level security;
+
+drop policy if exists "anon liest todo_items" on dashboard.todo_items;
+create policy "anon liest todo_items" on dashboard.todo_items
+  for select to anon, authenticated using (true);
+drop policy if exists "anon schreibt todo_items" on dashboard.todo_items;
+create policy "anon schreibt todo_items" on dashboard.todo_items
+  for insert to anon, authenticated with check (true);
+drop policy if exists "anon aendert todo_items" on dashboard.todo_items;
+create policy "anon aendert todo_items" on dashboard.todo_items
+  for update to anon, authenticated using (true) with check (true);
+drop policy if exists "anon loescht todo_items" on dashboard.todo_items;
+create policy "anon loescht todo_items" on dashboard.todo_items
+  for delete to anon, authenticated using (true);
+grant select, insert, update, delete on dashboard.todo_items to anon, authenticated;
 
 -- 5) Rechte: anders als in public gibt es im Custom-Schema KEINE automatischen Grants
 grant select on all tables in schema dashboard to anon, authenticated;
@@ -196,7 +245,9 @@ Exposed schemas** das Schema `dashboard` ergänzen — sonst antwortet die API m
 `PGRST106` und die Supabase-Widgets bleiben offline (der Hinweis dazu erscheint
 direkt im Widget).
 
-Es gibt **keine** Insert-/Update-Policies für `anon` — Schreiben ist per RLS blockiert.
+Es gibt **keine** Insert-/Update-Policies für `anon` — Schreiben ist per RLS
+blockiert. Einzige Ausnahme: `dashboard.todo_items` (siehe 4b) — dort schreibt
+der Route Handler `/api/todos` mit dem server-seitigen Anon-Key.
 
 ## Neues Widget hinzufügen
 
@@ -249,23 +300,22 @@ Projekt-Filter, Formular „Neue Aufgabe"), alle gespeist über den zentralen
 Hook `useTasksAndEvents()` (`lib/useTasksAndEvents.ts`). Der Hook liefert einen
 normalisierten `TaskOrEvent[]`-Strom (Typen in `lib/todo-types.ts`).
 
-**Datenquelle:** ausschließlich selbst erstellte Aufgaben, gespeichert lokal im
-Browser (`lib/todo-store.ts`, localStorage, `useSyncExternalStore` — SSR-sicher,
-tab-übergreifend). Kein Platzhalter-Datensatz. Anlegen über das Widget „Neue
-Aufgabe" auf `/todo` bzw. den Button im Overview-Fokus-Widget (`/todo#neu`).
-Eigene Aufgaben sind in der Zeitleiste abhak- und löschbar.
+**Datenquelle:** ausschließlich selbst erstellte Aufgaben, gespeichert in
+Supabase (`dashboard.todo_items`) über den Route Handler `app/api/todos/route.ts`.
+Der Client-Store (`lib/todo-store.ts`, `useSyncExternalStore` — SSR-sicher)
+arbeitet optimistisch: Mutationen landen sofort im UI und im localStorage
+(Warm-Cache für den ersten Paint), der Server-Schreibzugriff läuft asynchron;
+Fehler melden sich als Toast. Beim ersten Laden pro Gerät wird ein etwaiger
+localStorage-Alt-Bestand automatisch nach Supabase hochgeladen (Einmal-Flag
+`ov-todo-supabase-migrated-v1`). Anlegen über das Widget „Neue Aufgabe" auf
+`/todo` bzw. den Button im Overview-Fokus-Widget (`/todo#neu`). Eigene
+Aufgaben sind in der Zeitleiste abhak- und löschbar.
 
 **Kalender-Anbindung später (optional):** Die iOS-/Google-Kalender-MCP-
 Verbindung lebt im Claude-Client (Agent-Seite), **nicht** im Vercel-Runtime —
-die deployte App kann MCP-Tools nicht aufrufen. Echte Termine führen wie bei
-allen anderen Widgets über Supabase:
-
-1. Tabelle `dashboard.todo_items` anlegen (Migration analog `social_stats`).
-2. Agent/Hermes synct Kalender + Erinnerungen per MCP → Supabase.
-3. In `lib/useTasksAndEvents.ts` eine zweite Quelle (Fetch auf einen Route
-   Handler, z. B. `app/api/todo/route.ts`, serverseitig `getSupabase()`) neben
-   die User-Aufgaben mergen. Die Komponenten bleiben unverändert — sie kennen
-   nur den `TaskOrEvent`-Typ.
+die deployte App kann MCP-Tools nicht aufrufen. Echte Termine schreibt der
+Agent/Hermes per MCP direkt nach `dashboard.todo_items` — sie erscheinen dann
+automatisch im selben `TaskOrEvent`-Strom, die Komponenten bleiben unverändert.
 
 ## Hermes-Scripts (schreiben nach Supabase, laufen lokal per Cron)
 

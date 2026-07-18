@@ -19,6 +19,7 @@ const NAV: NavItem[] = [
     group: "Projects",
     children: [
       { href: "/ddd", label: "DDD" },
+      { href: "/drauwerk", label: "Drauwerk" },
       { href: "/redzone", label: "RedzoneEarth" },
     ],
   },

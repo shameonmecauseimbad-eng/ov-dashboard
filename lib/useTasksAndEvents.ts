@@ -23,18 +23,17 @@ function sortChrono(a: TaskOrEvent, b: TaskOrEvent): number {
 
 /**
  * Zentraler Datenzugriff für den gesamten /todo-Bereich. Quelle sind
- * ausschließlich die selbst erstellten Aufgaben (lib/todo-store.ts,
- * localStorage) — kein Platzhalter-Datensatz mehr. Die Aufgaben laden erst
- * NACH dem Mount (SSR-sicher leer), daher kein Hydration-Mismatch. Alle
- * Widgets teilen sich diese eine Quelle.
+ * ausschließlich die selbst erstellten Aufgaben (lib/todo-store.ts —
+ * Supabase dashboard.todo_items via /api/todos, localStorage als Warm-Cache).
+ * Die Aufgaben laden erst NACH dem Mount (SSR-sicher leer), daher kein
+ * Hydration-Mismatch. Alle Widgets teilen sich diese eine Quelle.
  *
  * KALENDER-ANBINDUNG SPÄTER (bewusst als Naht angelegt): Die App kann MCP
  * nicht selbst aufrufen — die iOS-/Google-Kalender-MCP-Verbindung lebt im
- * Claude-Client, nicht im Vercel-Runtime. Echte Termindaten führen wie bei den
- * übrigen Widgets über Supabase: Tabelle dashboard.todo_items anlegen,
- * Agent/Hermes synct Kalender per MCP → Supabase, hier eine zweite Quelle
- * (Fetch auf einen Route Handler) neben die User-Aufgaben mergen. Die Widgets
- * bleiben unverändert — sie kennen nur TaskOrEvent aus lib/todo-types.ts.
+ * Claude-Client, nicht im Vercel-Runtime. Echte Termindaten schreibt der
+ * Agent/Hermes per MCP direkt nach dashboard.todo_items (source: "mock" bzw.
+ * ein künftiger Kalender-Marker) — sie erscheinen dann automatisch im selben
+ * Strom. Die Widgets bleiben unverändert — sie kennen nur TaskOrEvent.
  */
 export function useTasksAndEvents(): UseTasksAndEventsResult {
   const userTasks = useUserTasks();

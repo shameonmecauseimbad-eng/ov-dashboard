@@ -4,6 +4,7 @@ import FocusZoomProvider from "@/components/FocusZoom";
 import PageHeader from "@/components/PageHeader";
 import Widget from "@/components/Widget";
 import DddKennzahlen from "@/components/widgets/DddKennzahlen";
+import DrauwerkKennzahlen from "@/components/widgets/DrauwerkKennzahlen";
 import GithubActivity from "@/components/widgets/GithubActivity";
 import KryptoKurse from "@/components/widgets/KryptoKurse";
 import MorgenBriefing from "@/components/widgets/MorgenBriefing";
@@ -43,20 +44,23 @@ export default function Home() {
           <Widget title="DDD Statistics" index={2} skeleton="stats" href="/ddd">
             <DddKennzahlen />
           </Widget>
+          <Widget title="Drauwerk" index={3} skeleton="stats" href="/drauwerk">
+            <DrauwerkKennzahlen />
+          </Widget>
         </div>
         <div className="flex flex-1 flex-col gap-4 sm:gap-5">
-          <Widget title="Social Media" index={3} href="/social">
+          <Widget title="Social Media" index={4} href="/social">
             <SocialMedia />
           </Widget>
           {/* GitHub neben (statt unter) Fokus & DDD — sitzt so auf gleicher
               Höhe wie der Fokus/DDD-Stack der linken Spalte. */}
-          <Widget title="GitHub Activity" index={4}>
+          <Widget title="GitHub Activity" index={5}>
             <GithubActivity />
           </Widget>
-          <Widget title="Krypto-Kurse" index={5} dataId="krypto" href="/krypto">
+          <Widget title="Krypto-Kurse" index={6} dataId="krypto" href="/krypto">
             <KryptoKurse />
           </Widget>
-          <Widget title="RedzoneEarth Ads" index={6} skeleton="stats" href="/redzone">
+          <Widget title="RedzoneEarth Ads" index={7} skeleton="stats" href="/redzone">
             <RedzoneEarthAds />
           </Widget>
           {/* Neue Widgets: Komponente unter components/widgets/ anlegen und
