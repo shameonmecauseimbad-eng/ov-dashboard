@@ -33,9 +33,10 @@ function PieTip({ active, payload, total }: TipProps & { total: number }) {
 
 /**
  * Plan-Verteilung als Donut mit monochromer Graustufen-Skala. Mittig die
- * Gesamtsumme, rechts eine Legende mit Zahl + Anteil je Plan.
+ * Gesamtsumme, rechts eine Legende mit Zahl + Anteil je Plan. `centerLabel`
+ * benennt die Einheit unter der Summe (z. B. „User", „Besuche").
  */
-export default function PlanPie({ data }: { data: PlanSlice[] }) {
+export default function PlanPie({ data, centerLabel = "User" }: { data: PlanSlice[]; centerLabel?: string }) {
   const total = data.reduce((sum, d) => sum + d.value, 0);
 
   return (
@@ -65,7 +66,7 @@ export default function PlanPie({ data }: { data: PlanSlice[] }) {
           <span className="font-mono text-stat font-semibold tabular-nums text-foreground">
             {nf.format(total)}
           </span>
-          <span className="text-[11px] uppercase tracking-[0.12em] text-muted">User</span>
+          <span className="text-[11px] uppercase tracking-[0.12em] text-muted">{centerLabel}</span>
         </div>
       </div>
 

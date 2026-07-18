@@ -4,6 +4,10 @@ import DrauwerkDetail from "@/components/widgets/DrauwerkDetail";
 
 export const metadata = { title: "Drauwerk · Overview Dashboard" };
 
+// Demo-Analytics laufen rollierend bis „heute" — stündlich neu rendern, damit
+// das Datumsfenster mitläuft (statt beim Build einzufrieren).
+export const revalidate = 3600;
+
 export default function DrauwerkPage() {
   return (
     <>

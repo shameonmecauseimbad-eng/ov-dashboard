@@ -5,19 +5,21 @@
 // Projektfakten. Diese Datei ist die Single Source of Truth fürs Dashboard;
 // bei Projektänderungen hier nachziehen (Quelle: Vault „Projekte/Drauwerk").
 //
-// Stand der Notizen: 17.07.2026 (fertig gebaut, lokal verifiziert, noch nicht
-// deployed). Repo: shameonmecauseimbad-eng/drauwerk-site (privat).
+// Stand der Notizen: 18.07.2026 — live: https://drauwerk.at (Vercel + Domain bei
+// easyname, HTTPS aktiv, Kontaktformular scharf). Repo: shameonmecauseimbad-eng/
+// drauwerk-site (privat).
 
 export const DRAUWERK = {
-  stand: "17.07.2026",
+  stand: "18.07.2026",
   claim: "Websites, die aus Besuchern Kunden machen.",
 
   // ── Pakete (Endpreise, Kleinunternehmerregelung — keine USt.) ──────────────
   // Quelle: „Drauwerk Feature — Festpreise & Pakete". Werktage bis Livegang.
+  // 17.07.2026 gesenkt: Starter 499 / Signature 899 / Fast Track 1.499 €.
   pakete: [
-    { name: "Starter", preis: 690, werktage: 5, features: 7, highlight: false },
-    { name: "Signature", preis: 1290, werktage: 10, features: 8, highlight: true },
-    { name: "Fast Track", preis: 1890, werktage: 3, features: 6, highlight: false },
+    { name: "Starter", preis: 499, werktage: 10, features: 7, highlight: false },
+    { name: "Signature", preis: 899, werktage: 7, features: 8, highlight: true },
+    { name: "Fast Track", preis: 1499, werktage: 3, features: 6, highlight: false },
   ],
 
   // ── Upsell-Katalog (einmalige Extras, ,99-Anker) ───────────────────────────
@@ -57,13 +59,13 @@ export const DRAUWERK = {
     clientKomponenten: 7, // „Client nur wo nötig" — Rest sind Server-Komponenten
   },
 
-  // ── Go-Live-Checkliste (Stand 15.–17.07.2026) ──────────────────────────────
+  // ── Go-Live-Checkliste (Stand 18.07.2026 — Site ist live) ──────────────────
   // Quelle: „Drauwerk 🚀 Go-Live Checkliste". erledigt/gesamt je Kategorie.
-  // „Code fertig & verifiziert — Launch blockiert nur durch Inhalte/Konfig."
+  // Site live seit 18.07.; offen sind v. a. Recht (AV-Verträge) & Nachlauf.
   goLive: [
-    { kategorie: "Inhalte", erledigt: 1, gesamt: 5 },
-    { kategorie: "Konfiguration", erledigt: 0, gesamt: 5 },
-    { kategorie: "Deployment", erledigt: 1, gesamt: 6 },
+    { kategorie: "Inhalte", erledigt: 3, gesamt: 5 },
+    { kategorie: "Konfiguration", erledigt: 4, gesamt: 5 },
+    { kategorie: "Deployment", erledigt: 5, gesamt: 6 },
     { kategorie: "Recht", erledigt: 0, gesamt: 3 },
     { kategorie: "Nach Launch", erledigt: 0, gesamt: 4 },
   ],
@@ -75,8 +77,10 @@ export const DRAUWERK = {
     { datum: "15.07.2026", titel: "Rebrand „Webcraft“ → „Drauwerk“, Logo, GitHub-Push" },
     { datum: "15.07.2026", titel: "SEO, Blog + 2 Artikel, JSON-LD, Sitemap" },
     { datum: "15.07.2026", titel: "Hero-Umbau: Split-Layout, Mockup, Cursor-Animation" },
-    { datum: "16.07.2026", titel: "Festpreise (690/1.290/1.890 €) + Upsell-System" },
-    { datum: "17.07.2026", titel: "Cursor-Navigation (3 Ansichten), Premium-Widget" },
+    { datum: "16.07.2026", titel: "Festpreise + Upsell-System" },
+    { datum: "17.07.2026", titel: "Cursor-Navigation (3 Ansichten), Preise gesenkt" },
+    { datum: "18.07.2026", titel: "Vercel-Deploy live, Domain drauwerk.at + HTTPS" },
+    { datum: "18.07.2026", titel: "Kontaktformular scharf (Resend, Live-Test bestanden)" },
   ],
 } as const;
 

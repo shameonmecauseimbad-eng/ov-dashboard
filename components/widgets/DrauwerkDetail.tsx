@@ -1,12 +1,14 @@
 import BarChart from "@/components/dashboard/BarChart";
+import MultiLineChart from "@/components/dashboard/MultiLineChart";
 import PlanPie from "@/components/dashboard/PlanPie";
 import CountUp from "@/components/CountUp";
 import Reveal from "@/components/Reveal";
 import { SectionNote } from "@/components/widgets/DddDetail";
 import WidgetCard from "@/components/WidgetCard";
 import { DRAUWERK, drauwerkStartpreis, goLiveFortschritt } from "@/lib/drauwerk";
+import { buildDrauwerkDemo, type DrauwerkDemo } from "@/lib/drauwerk-demo";
 
-const euro = new Intl.NumberFormat("de-AT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+const int = new Intl.NumberFormat("de-AT");
 
 // ─── Kleine Bausteine (monochrom, Dashboard-Designregeln) ────────────────────
 
@@ -74,41 +76,135 @@ function ProgressBar({ kategorie, erledigt, gesamt }: { kategorie: string; erled
   );
 }
 
+// Conversion-Funnel: absteigende Balken, Helligkeit nimmt Stufe für Stufe ab
+// (Monochrom: Richtung über Helligkeit + Breite, nicht über Farbe).
+const FUNNEL_SHADES = ["#e5e5e5", "#bcbcc0", "#8f8f94", "#5f5f64"];
+
+function Funnel({ data }: { data: DrauwerkDemo["funnel"] }) {
+  return (
+    <ul className="space-y-3.5">
+      {data.map((f, i) => (
+        <li key={f.stufe} className="text-sm">
+          <div className="mb-1.5 flex items-baseline justify-between gap-3">
+            <span className="text-foreground">{f.stufe}</span>
+            <span className="shrink-0 font-mono tabular-nums text-muted">
+              <span className="text-foreground">{int.format(f.value)}</span>
+              <span className="ml-2 tabular-nums">{f.pct.toFixed(1)} %</span>
+            </span>
+          </div>
+          <span className="relative block h-2.5 overflow-hidden rounded-full bg-white/[0.06]">
+            <span
+              className="absolute inset-y-0 left-0 rounded-full"
+              style={{ width: `${Math.max(f.pct, 1.5)}%`, backgroundColor: FUNNEL_SHADES[i] ?? FUNNEL_SHADES.at(-1) }}
+              aria-hidden="true"
+            />
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// Anfragen-Eingang: aufklappbare Liste (native <details>, ohne JS) zum Lesen.
+// „offen" = helle Markierung, „beantwortet" = gedämpft (Monochrom-Regel).
+function Eingang({ items }: { items: DrauwerkDemo["eingang"] }) {
+  return (
+    <ul className="-my-1 divide-y divide-line">
+      {items.map((e, i) => (
+        <li key={i}>
+          <details className="group">
+            <summary className="flex cursor-pointer list-none items-center gap-3 py-3 transition-colors hover:text-white [&::-webkit-details-marker]:hidden">
+              <span
+                className={`h-2 w-2 shrink-0 rounded-full ${e.status === "offen" ? "bg-foreground" : "bg-white/25"}`}
+                aria-hidden="true"
+              />
+              <span className="min-w-0 flex-1">
+                <span className="flex items-baseline gap-1.5">
+                  <span className="truncate font-medium text-foreground">{e.name}</span>
+                  <span className="shrink-0 text-xs text-muted">· {e.ort}</span>
+                </span>
+                <span className="mt-0.5 block truncate text-xs text-muted">{e.nachricht}</span>
+              </span>
+              {e.paket && (
+                <span className="hidden shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-[11px] text-muted sm:inline">
+                  {e.paket}
+                </span>
+              )}
+              <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted">{e.zeit}</span>
+              <svg
+                viewBox="0 0 24 24"
+                className="h-3.5 w-3.5 shrink-0 text-muted transition-transform group-open:rotate-90"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </summary>
+            <div className="pb-4 pl-5 pr-1">
+              <p className="text-sm text-foreground/90">{e.nachricht}</p>
+              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted">
+                <span>
+                  Paket: <span className="text-foreground">{e.paket || "—"}</span>
+                </span>
+                <span>
+                  Quelle: <span className="text-foreground">{e.quelle}</span>
+                </span>
+                <span>
+                  Status: <span className="text-foreground">{e.status}</span>
+                </span>
+                <span>
+                  Eingegangen: <span className="font-mono text-foreground">{e.datum}</span>
+                </span>
+              </div>
+            </div>
+          </details>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// Wiederkehrender Hinweis auf den Demo-Charakter (statt echter Live-Quelle).
+function DemoQuelle({ children }: { children: React.ReactNode }) {
+  return (
+    <SectionNote>
+      <span className="font-medium text-foreground">Beispieldaten</span> — noch keine Live-Anbindung. {children}
+    </SectionNote>
+  );
+}
+
 // ─── Gemeinsame Kennzahlen-Karte (Overview-Widget + /drauwerk-Seite) ─────────
 
 export function DrauwerkKennzahlenCard({ title }: { title: string }) {
   return (
-    <WidgetCard title={title} badge="Projekt" badgeTone="neutral">
+    <WidgetCard title={title} badge="Live" badgeTone="accent">
       <div className="grid grid-cols-2 gap-5 sm:flex sm:items-baseline sm:gap-4">
         <StatTile label="PageSpeed" value={DRAUWERK.lighthouse.scores[0].value} suffix="/100" />
         <StatTile label="Startpreis" value={drauwerkStartpreis} prefix="ab € " />
         <StatTile label="Komponenten" value={DRAUWERK.architektur.komponenten} />
-        <StatTile label="Launch-Reife" value={goLiveFortschritt.prozent} suffix=" %" hint="Inhalte/Konfig offen" />
+        <StatTile label="Checkliste" value={goLiveFortschritt.prozent} suffix=" %" hint="live · Rest: Recht/Analytics" />
       </div>
       <SectionNote>
-        One-Page-Marketing-Website · Zielgruppe Selbstständige &amp; KMU (Österreich) · Stand {DRAUWERK.stand} ·
-        Quelle: Obsidian-Vault (<span className="font-mono">Projekte/Drauwerk</span>)
+        One-Page-Marketing-Website · live: <span className="font-mono">drauwerk.at</span> · Zielgruppe Selbstständige
+        &amp; KMU (Österreich) · Stand {DRAUWERK.stand} · Quelle: Obsidian-Vault (
+        <span className="font-mono">Projekte/Drauwerk</span>)
       </SectionNote>
     </WidgetCard>
   );
 }
 
 // ─── Detail-Inhalt ───────────────────────────────────────────────────────────
+// Reihenfolge: Identität (real) → Betrieb: Anfragen & Besuche (Demo) →
+// Technik & Verlauf (real). Demo-Daten laufen rollierend bis „heute" mit.
 
 export default function DrauwerkDetail() {
-  const paketBars = DRAUWERK.pakete.map((p) => ({ label: p.name, value: p.preis, highlight: p.highlight }));
-  // Kurz-Labels für die X-Achse (volle Namen würden bei 7 Balken überlappen).
-  const upsellShort: Record<string, string> = {
-    "Newsletter-Anbindung": "Newsletter",
-    "Zusätzliche Unterseite": "Unterseite",
-    "Erweiterte SEO": "SEO",
-    "Blog-/News-Sektion": "Blog",
-    Copywriting: "Copy",
-    "Express-Lieferung": "Express",
-    Mehrsprachigkeit: "Mehrspr.",
-  };
-  const upsellBars = DRAUWERK.upsells.map((u) => ({ label: upsellShort[u.name] ?? u.name, value: u.preis }));
-  // Architektur-Split Server vs. Client als Donut.
+  const demo = buildDrauwerkDemo(Date.now());
+
+  // Architektur-Split Server vs. Client als Donut (dokumentierte Projektfakten).
   const archSlices = [
     { name: "Server", value: DRAUWERK.architektur.komponenten - DRAUWERK.architektur.clientKomponenten },
     { name: "Client", value: DRAUWERK.architektur.clientKomponenten },
@@ -116,22 +212,92 @@ export default function DrauwerkDetail() {
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      {/* 1 — Kennzahlen */}
+      {/* 1 — Kennzahlen (real) */}
       <DrauwerkKennzahlenCard title="Kennzahlen" />
 
-      {/* 2 — Paket-Preise */}
+      {/* 2 — Kundenanfragen im Zeitverlauf (Demo) */}
       <Reveal delayMs={100}>
-        <WidgetCard title="Paket-Preise" badge="Festpreis" badgeTone="accent">
-          <BarChart data={paketBars} valuePrefix="€ " />
-          <SectionNote>
-            Endpreise, keine USt. (Kleinunternehmerregelung) · Signature = „Beliebteste Wahl“ · Livegang Starter 5 /
-            Signature 10 / Fast Track 3 Werktage
-          </SectionNote>
+        <WidgetCard title="Kundenanfragen" badge="Demo" badgeTone="neutral">
+          <div className="mb-5 grid grid-cols-2 gap-5 sm:flex sm:items-baseline sm:gap-4">
+            <StatTile label="Anfragen (30 T)" value={demo.kpi.anfragen30} />
+            <StatTile label="Diese Woche" value={demo.kpi.anfragenWoche} />
+            <StatTile label="Conversion" value={demo.kpi.conversion} suffix=" %" maxFractionDigits={1} />
+            <StatTile label="Ø Antwortzeit" value={demo.kpi.antwortzeitStd} suffix=" Std." />
+          </div>
+          <MultiLineChart data={demo.anfragen} xKey="label" lines={[{ key: "anfragen", label: "Anfragen/Tag" }]} />
+          <DemoQuelle>
+            Echte Quelle später: Kontaktformular schreibt anonym nach{" "}
+            <span className="font-mono">dashboard.drauwerk_inquiries</span> (Supabase).
+          </DemoQuelle>
         </WidgetCard>
       </Reveal>
 
-      {/* 3 — Lighthouse-Performance */}
+      {/* 3 — Anfragen-Eingang zum Auslesen (Demo) */}
       <Reveal delayMs={150}>
+        <WidgetCard title="Anfragen-Eingang" badge="Demo" badgeTone="neutral">
+          <Eingang items={demo.eingang} />
+          <DemoQuelle>
+            Zeile aufklappen zum Lesen. Namen &amp; Texte sind fiktiv — echte Anfragen erscheinen hier, sobald das
+            Formular in Supabase schreibt.
+          </DemoQuelle>
+        </WidgetCard>
+      </Reveal>
+
+      {/* 4 — Paket-Interesse aus den Anfragen (Demo) */}
+      <Reveal delayMs={200}>
+        <WidgetCard title="Paket-Interesse" badge="Demo" badgeTone="neutral">
+          <BarChart data={demo.paketInteresse} height={240} />
+          <DemoQuelle>
+            Wie oft welches Paket in den Anfragen vorausgewählt war (Signature führt). Quelle später: Formularfeld{" "}
+            <span className="font-mono">paket</span>.
+          </DemoQuelle>
+        </WidgetCard>
+      </Reveal>
+
+      {/* 5 — Seitenbesuche im Zeitverlauf (Demo) */}
+      <Reveal delayMs={250}>
+        <WidgetCard title="Seitenbesuche" badge="Demo" badgeTone="neutral">
+          <div className="mb-5 grid grid-cols-3 gap-4 sm:flex sm:items-baseline sm:gap-4">
+            <StatTile label="Besucher (30 T)" value={demo.kpi.besucher30} />
+            <StatTile label="Ø / Tag" value={demo.kpi.besucherSchnitt} />
+            <StatTile label="Heute" value={demo.kpi.besucherHeute} />
+          </div>
+          <MultiLineChart
+            data={demo.besuche}
+            xKey="label"
+            lines={[
+              { key: "besucher", label: "Besucher" },
+              { key: "unique", label: "Eindeutige", muted: true },
+            ]}
+          />
+          <DemoQuelle>
+            Echte Quelle später: Plausible Stats-API (cookielos) — aktivieren via{" "}
+            <span className="font-mono">NEXT_PUBLIC_PLAUSIBLE_DOMAIN</span> auf der Drauwerk-Site.
+          </DemoQuelle>
+        </WidgetCard>
+      </Reveal>
+
+      {/* 6 — Traffic-Quellen (Demo) */}
+      <Reveal delayMs={300}>
+        <WidgetCard title="Traffic-Quellen" badge="Demo" badgeTone="neutral">
+          <PlanPie data={demo.quellen} centerLabel="Besuche" />
+          <DemoQuelle>Woher die Besucher kommen (30 Tage). Quelle später: Plausible.</DemoQuelle>
+        </WidgetCard>
+      </Reveal>
+
+      {/* 7 — Conversion-Funnel (Demo) */}
+      <Reveal delayMs={350}>
+        <WidgetCard title="Conversion-Funnel" badge="Demo" badgeTone="neutral">
+          <Funnel data={demo.funnel} />
+          <DemoQuelle>
+            Besuch → Kontakt-Sektion gesehen → Formular begonnen → Anfrage gesendet (30 Tage). Quelle später:
+            Plausible-Goals + Supabase.
+          </DemoQuelle>
+        </WidgetCard>
+      </Reveal>
+
+      {/* 8 — Lighthouse-Performance (real) */}
+      <Reveal delayMs={400}>
         <WidgetCard title="Lighthouse" badge="96/100" badgeTone="accent">
           <ul className="space-y-3">
             {DRAUWERK.lighthouse.scores.map((s) => (
@@ -162,21 +328,10 @@ export default function DrauwerkDetail() {
         </WidgetCard>
       </Reveal>
 
-      {/* 4 — Upsell-Katalog */}
-      <Reveal delayMs={200}>
-        <WidgetCard title="Upsell-Katalog" badge="Extras" badgeTone="neutral">
-          <BarChart data={upsellBars} valuePrefix="€ " fractionDigits={2} height={280} />
-          <SectionNote>
-            Einmalige Extras (,99-Anker) · „Alle Extras auf einmal“ {euro.format(DRAUWERK.alleExtras)} · laufend:{" "}
-            {DRAUWERK.abo.name} {DRAUWERK.abo.preisProMonat.toLocaleString("de-AT")} €/Monat
-          </SectionNote>
-        </WidgetCard>
-      </Reveal>
-
-      {/* 5 — Architektur (Server vs. Client) */}
-      <Reveal delayMs={250}>
+      {/* 9 — Architektur (Server vs. Client, real) */}
+      <Reveal delayMs={450}>
         <WidgetCard title="Architektur" badge="Next.js" badgeTone="neutral">
-          <PlanPie data={archSlices} />
+          <PlanPie data={archSlices} centerLabel="Kompon." />
           <SectionNote>
             {DRAUWERK.architektur.komponenten} Komponenten, „Client nur wo nötig“ · {DRAUWERK.architektur.sektionen}{" "}
             Sektionen im One-Pager · alle Seiten statisch vorgerendert
@@ -184,23 +339,23 @@ export default function DrauwerkDetail() {
         </WidgetCard>
       </Reveal>
 
-      {/* 6 — Go-Live-Fortschritt */}
-      <Reveal delayMs={300}>
-        <WidgetCard title="Go-Live-Fortschritt" badge={`${goLiveFortschritt.prozent} %`} badgeTone="neutral">
+      {/* 10 — Go-Live-Checkliste (real) */}
+      <Reveal delayMs={500}>
+        <WidgetCard title="Launch-Checkliste" badge={`${goLiveFortschritt.prozent} %`} badgeTone="neutral">
           <ul className="space-y-3">
             {DRAUWERK.goLive.map((g) => (
               <ProgressBar key={g.kategorie} {...g} />
             ))}
           </ul>
           <SectionNote>
-            Code fertig &amp; verifiziert — Launch blockiert durch Inhalte (Platzhalter Rechtsseiten) &amp;
-            Konfiguration (Env-Vars, Domain, Resend)
+            Site ist live seit 18.07.2026 — offen sind v. a. AV-Verträge (Recht) sowie Nachlauf (Search Console,
+            Live-Lighthouse, optional Analytics)
           </SectionNote>
         </WidgetCard>
       </Reveal>
 
-      {/* 7 — Build-Timeline */}
-      <Reveal delayMs={350}>
+      {/* 11 — Build-Timeline (real) */}
+      <Reveal delayMs={550}>
         <WidgetCard title="Build-Timeline" badge="Verlauf" badgeTone="neutral">
           <ol className="relative space-y-4 border-l border-line pl-5">
             {DRAUWERK.timeline.map((t, i) => (
@@ -214,7 +369,7 @@ export default function DrauwerkDetail() {
               </li>
             ))}
           </ol>
-          <SectionNote>Session-Logs 14.–17.07.2026 · Quelle: Vault „Projekte/Drauwerk“</SectionNote>
+          <SectionNote>Session-Logs 14.–18.07.2026 · Quelle: Vault „Projekte/Drauwerk“</SectionNote>
         </WidgetCard>
       </Reveal>
     </div>
